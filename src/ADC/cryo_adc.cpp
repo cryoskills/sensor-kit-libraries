@@ -1,5 +1,28 @@
-/* BEGIN function _defintions_ */
-void cryo_init_adc(void) {
+#include "cryo_adc.h"
+
+ADCDifferential::ADCDifferential(
+  ADCDifferential::INPUT_PIN_POS input_pos,
+  ADCDifferential::INPUT_PIN_NEG input_neg,
+  ADCDifferential::GAIN gain,
+  ADCDifferential::AVERAGES averages,
+  ADCDifferential::RESOLUTION resolution,
+  ADCDifferential::VOLTAGE_REFERENCE reference
+) {
+
+  // Generic clock init
+  this->generic_clock_init();
+  // ADC init
+  this->disable();
+  this->adc_init();
+
+  this->set_input_pins(input_pos, input_neg);
+  this->set_gain(gain);
+  this->set_resolution(resolution);
+  this->set_voltage_reference(reference);
+
+}
+
+void ADCDifferential::generic_clock_init() {
     
   // Step 1 - Configure Generic Clock Generator (GCLK_ADC)
   // Unless we want to reduce the conversion rate, we can leave GENDIV alone
@@ -24,25 +47,28 @@ void cryo_init_adc(void) {
   GCLK->CLKCTRL.reg = 0x401e;
   while (GCLK->STATUS.bit.SYNCBUSY);
 
-  ADC->CTRLA.reg = ADC_CTRLA_SWRST;
-  while (ADC->STATUS.bit.SYNCBUSY);
+}
 
+void ADCDifferential::adc_init() {
+
+  ADC->CTRLA.reg = ADC_CTRLA_SWRST;
+  this->wait_for_sync();
+  
   // // Step 3 - Configure Differential Mode
   // //   this will resolve the voltage between MUXPOS and MUXNEG
   ADC->CTRLB.reg = 
     // set 12-bit resolution
-    ADC_CTRLB_RESSEL_16BIT |
     // divide clock by 512 (8 MHz / 512 = 15.62 kHz)
     ADC_CTRLB_PRESCALER_DIV512 |
     // and enable differential mode
     ADC_CTRLB_DIFFMODE;
-  while (ADC->STATUS.bit.SYNCBUSY);
+  this->wait_for_sync();
 
   // Set sampling time 
   //    JH: need to play around here with effect on ADC input impedance/accuracy
     ADC->SAMPCTRL.reg = 
     ADC_SAMPCTRL_MASK & 0; // 0xff;
-  while (ADC->STATUS.bit.SYNCBUSY);
+  this->wait_for_sync();
 
   // Step 6 - Read NVM calibration values
   // - ref: https://blog.thea.codes/reading-analog-values-with-the-samd-adc/
@@ -55,68 +81,191 @@ void cryo_init_adc(void) {
   /* Wait for bus synchronization. */
   while (ADC->STATUS.bit.SYNCBUSY) {};
 
-  // Step 7 - Configure input ports
-  // PIN A2 on Adafruit Feather M0
-  //  clear direction register for PB09 (sets to input)
-  PORT->Group[1].DIRCLR.reg = PORT_PB09; // Pin A2
-  PORT->Group[1].PINCFG[9].reg |= PORT_PINCFG_PMUXEN;
-  PORT->Group[1].PMUX[4].reg = PORT_PMUX_PMUXO_B; // note PMUXO for ODD pin
-  while (ADC->STATUS.bit.SYNCBUSY);
-
-  // PIN A1 on Adafruit Feather M0
-  PORT->Group[1].DIRCLR.reg = PORT_PB08; // Pin A1
-  PORT->Group[1].PINCFG[8].reg |= PORT_PINCFG_PMUXEN;
-  PORT->Group[1].PMUX[4].reg = PORT_PMUX_PMUXE_B; // note PMUXE for EVEN pin
-  while (ADC->STATUS.bit.SYNCBUSY);
-
-  configure_adc(ADC_PIN_POS, ADC_PIN_NEG, ADC_REFCTRL_REFSEL_INT1V);
-
-  // Last Step - Enable ADC
-  ADC->CTRLA.reg = ADC_CTRLA_ENABLE;
-  while (ADC->STATUS.bit.SYNCBUSY);
-
 }
 
-void cryo_configure_adc(
-    uint16_t pin_pos, uint16_t pin_neg, uint16_t reference) {
+void ADCDifferential::set_input_pins(ADCDifferential::INPUT_PIN_POS input_pos, ADCDifferential::INPUT_PIN_NEG input_neg) {
 
-  ADC->INPUTCTRL.reg =
-    // Gain control
-    ADC_INPUTCTRL_GAIN_4X |
-    // Select MUXNEG input
-    pin_neg | // Pin2 == PB08 == A1
-    // Select MUXPOS inut
-    pin_pos; // Pin3 == PB09 == A2
-  while (ADC->STATUS.bit.SYNCBUSY);
+  bool enabled = this->is_enabled();
+  if (enabled)
+    this->disable();
 
-  // // Step 2 - Configure ADC reference
-  ADC->REFCTRL.reg = 
-    // enable reference buffer offset compensation
-    ADC_REFCTRL_REFCOMP | 
-    // select internal 1.0V voltage reference
-    reference;
-  while (ADC->STATUS.bit.SYNCBUSY);
+  // Assign port direction registers
+  this->input_pin_direction(input_pos);
+  this->input_pin_direction(input_neg);
   
-  // Step 5 - Set sample count
-  ADC->AVGCTRL.reg = 
-    // One sample per trigger
-    ADC_AVGCTRL_SAMPLENUM_1024;
-  while (ADC->STATUS.bit.SYNCBUSY);
+  ADC->INPUTCTRL.reg = (ADC->INPUTCTRL.reg & ~(ADC_INPUTCTRL_MUXPOS_Msk | ADC_INPUTCTRL_MUXNEG_Msk)) 
+    | (uint32_t)input_pos | (uint32_t)input_neg;
+  this->wait_for_sync();
 
-  // Configure output PIN
-  PORT->Group[0].DIRSET.reg = PORT_PA02;
-  PORT->Group[0].PINCFG[2].reg |= PORT_PINCFG_PMUXEN;
-  PORT->Group[0].PMUX[1].reg = PORT_PMUX_PMUXE_B; // MUX[1] is MUX[N] where N = 2*n for even 'n'
+  if (enabled)
+    this->enable();
 
 }
 
-int32_t cryo_read_adc() {
+void ADCDifferential::input_pin_direction(ADCDifferential::INPUT_PIN_POS input_pos) {
+
+  switch (input_pos) {
+    case INPUT_PIN_POS::A0_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA02, 2, 1, PORT_PMUX_PMUXE_A);
+    case INPUT_PIN_POS::A1_PIN:
+      this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 8, 4, PORT_PMUX_PMUXE_B);
+    case INPUT_PIN_POS::A2_PIN:
+      this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 9, 4, PORT_PMUX_PMUXO_B);
+    case INPUT_PIN_POS::A3_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA04, 4, 2, PORT_PMUX_PMUXE_A);
+    case INPUT_PIN_POS::A4_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA05, 5, 2, PORT_PMUX_PMUXO_A);
+    case INPUT_PIN_POS::A5_PIN:
+      this->input_pin_direction_register_set(GROUP_1, PORT_PB02, 2, 1, PORT_PMUX_PMUXE_B);
+    case INPUT_PIN_POS::D0_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA11, 11, 5, PORT_PMUX_PMUXO_A);
+    case INPUT_PIN_POS::D1_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA10, 10, 5, PORT_PMUX_PMUXE_A);
+    case INPUT_PIN_POS::D9_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA07, 7, 3, PORT_PMUX_PMUXO_A);
+    default:
+      return; // don't need to do anything
+  }
+
+}
+
+void ADCDifferential::input_pin_direction(ADCDifferential::INPUT_PIN_NEG input_neg) {
+
+  switch (input_pos) {
+    case INPUT_PIN_POS::A0_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA02, 2, 1, PORT_PMUX_PMUXE_A);
+    case INPUT_PIN_POS::A1_PIN:
+      this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 8, 4, PORT_PMUX_PMUXE_B);
+    case INPUT_PIN_POS::A2_PIN:
+      this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 9, 4, PORT_PMUX_PMUXO_B);
+    case INPUT_PIN_POS::A3_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA04, 4, 2, PORT_PMUX_PMUXE_A);
+    case INPUT_PIN_POS::A4_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA05, 5, 2, PORT_PMUX_PMUXO_A);
+    case INPUT_PIN_POS::D9_PIN:
+      this->input_pin_direction_register_set(GROUP_0, PORT_PA07, 7, 3, PORT_PMUX_PMUXO_A);
+    default:
+      return; // don't need to do anything
+  }
+
+}
+
+void ADCDifferential::input_pin_direction_register_set(
+  uint8_t group,
+  uint32_t dirclr,
+  uint16_t pincfg,
+  uint16_t pmux,
+  uint8_t pmuxreg) {
+
+  PORT->Group[group].DIRCLR.reg = dirclr; // DIRCLR for input, DIRSET for output
+  PORT->Group[group].PINCFG[pincfg].reg |= PORT_PINCFG_PMUXEN;
+  PORT->Group[group].PMUX[pmux].reg = pmuxreg;
+
+}
+
+void ADCDifferential::enable() {
+
+  ADC->CTRLA.reg = ADC->CTRLA.reg | ADC_CTRLA_ENABLE;
+  this->wait_for_sync();
+
+}
+
+void ADCDifferential::disable() {
+
+  ADC->CTRLA.reg = ADC->CTRLA.reg & ~ADC_CTRLA_ENABLE;
+  this->wait_for_sync();
+
+}
+
+bool ADCDifferential::is_enabled() {
+
+  // return enable bit
+  return (bool) ADC->CTRLA.bit.ENABLE;
+
+}
+
+void ADCDifferential::wait_for_sync() {
+  
+  this->wait_for_sync();
+
+}
+
+void ADCDifferential::set_gain(ADCDifferential::GAIN gain) {
+
+  // Store enabled state
+  bool enabled = this->is_enabled();
+  if (enabled)
+    this->disable();
+
+  // Clear existing gain setting, then OR with new one
+  ADC->INPUTCTRL.reg = (ADC->INPUTCTRL.reg & ~ADC_INPUTCTRL_GAIN_Msk) | gain;
+  this->wait_for_sync();
+
+  // Re-enable if necessary
+  if (enabled) this->enable();
+
+}
+
+void ADCDifferential::set_gain(float_t gain_numeric) {
+
+  // Perform conversion and defer to register implementation
+  ADCDifferential::GAIN gain_enum = ADCDifferential::convert_gain_to_enum(gain_numeric);
+  this->set_gain(gain_enum);
+
+}
+
+void ADCDifferential::set_voltage_reference(ADCDifferential::VOLTAGE_REFERENCE reference) {
+
+  // Store enabled state
+  bool enabled = this->is_enabled();
+  if (enabled)
+    this->disable();
+    
+  // Clear existing voltage reference, then OR with new one
+  ADC->REFCTRL.reg =(ADC->REFCTRL.reg & ~ADC_REFCTRL_REFSEL_Msk) | ADC_REFCTRL_REFCOMP | reference;
+  this->wait_for_sync();
+
+  // Re-enable if necessary
+  if (enabled) this->enable();
+
+}
+
+void ADCDifferential::set_resolution(ADCDifferential::RESOLUTION res) {
+
+  // Store enabled state
+  bool enabled = this->is_enabled();
+  if (enabled)
+    this->disable();
+    
+  // Clear existing voltage reference, then OR with new one
+  ADC->CTRLB.reg =(ADC->CTRLB.reg & ~ADC_CTRLB_RESSEL_Msk) | res;
+  this->wait_for_sync();
+
+  // Re-enable if necessary
+  if (enabled) this->enable();
+
+}
+
+void ADCDifferential::set_averages(ADCDifferential::AVERAGES averages) {
+
+  bool enabled = this->is_enabled();
+  if (enabled)
+    this->disable();
+
+    ADC->AVGCTRL.reg = (ADC->AVGCTRL.reg & ~ADC_AVGCTRL_SAMPLENUM_Msk) | averages;
+    this->wait_for_sync();
+
+  if (enabled) this->enable();
+
+}
+
+int16_t ADCDifferential::read() {
   
   // Read ADC value
   int16_t adc_conversion;
   // - Trigger conversion
   ADC->SWTRIG.reg = ADC_SWTRIG_START;
-  while (ADC->STATUS.bit.SYNCBUSY);
+  this->wait_for_sync();
 
   // int16_t adc_conversion;
   // // wait until ready
