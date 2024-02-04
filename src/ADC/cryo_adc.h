@@ -74,9 +74,6 @@ class ADCDifferential {
     };
 
     private:
-        uint16_t samples;
-        float_t gain;
-
         // Input and output pins
         ADCDifferential::INPUT_PIN_POS input_pos;
         ADCDifferential::INPUT_PIN_NEG input_neg;
@@ -86,6 +83,12 @@ class ADCDifferential {
 
         // Voltage reference
         ADCDifferential::VOLTAGE_REFERENCE reference;
+
+        // Gain
+        ADCDifferential::GAIN gain;
+
+        // Averages
+        ADCDifferential::AVERAGES averages;
 
     public:
         // Convert a gain value to the nearest accepted value and return the corresponding enum
@@ -106,6 +109,8 @@ class ADCDifferential {
         // Class destructor
         //  called when the class is out of scope - used to disable the ADC
         ~ADCDifferential();
+
+        void begin();
 
         // Read ADC value
         int16_t read();
@@ -166,13 +171,3 @@ class ADCDifferential {
         );
 
 };
-
-void cryo_init_adc();
-
-void cryo_configure_adc(
-    uint16_t pin_pos, 
-    uint16_t pin_neg, 
-    uint16_t voltage_reference
-);
-
-int32_t cryo_read_adc();

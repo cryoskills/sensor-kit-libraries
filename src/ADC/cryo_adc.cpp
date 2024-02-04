@@ -1,5 +1,12 @@
 #include "cryo_adc.h"
 
+#define DEBUG
+#ifdef DEBUG
+#define CRYODEBUG(s) Serial1.print(#s)
+#else
+#define CRYODEBUG(S) 
+#endif
+
 ADCDifferential::ADCDifferential(
   ADCDifferential::INPUT_PIN_POS input_pos,
   ADCDifferential::INPUT_PIN_NEG input_neg,
@@ -9,16 +16,40 @@ ADCDifferential::ADCDifferential(
   ADCDifferential::VOLTAGE_REFERENCE reference
 ) {
 
+  this->input_pos = input_pos;
+  this->input_neg = input_neg;
+  this->gain = gain;
+  this->averages = averages;
+  this->resolution = resolution;
+  this->reference = reference;
+
+}
+
+ADCDifferential::~ADCDifferential() {
+  this->disable();
+}
+
+void ADCDifferential::begin() {
+  
   // Generic clock init
+  CRYODEBUG("Clock init");
   this->generic_clock_init();
   // ADC init
+  CRYODEBUG("Disable");
   this->disable();
+  CRYODEBUG("ADC init");
   this->adc_init();
 
-  this->set_input_pins(input_pos, input_neg);
-  this->set_gain(gain);
-  this->set_resolution(resolution);
-  this->set_voltage_reference(reference);
+  CRYODEBUG("Input pins");
+  this->set_input_pins(this->input_pos, this->input_neg);
+  CRYODEBUG("Gain");
+  this->set_gain(this->gain);
+  CRYODEBUG("Resolution");
+  this->set_resolution(this->resolution);
+  CRYODEBUG("Reference");
+  this->set_voltage_reference(this->reference);
+  CRYODEBUG("Averages");
+  this->set_averages(this->averages);
 
 }
 
@@ -186,7 +217,7 @@ bool ADCDifferential::is_enabled() {
 
 void ADCDifferential::wait_for_sync() {
   
-  this->wait_for_sync();
+  while (ADC->STATUS.bit.SYNCBUSY);
 
 }
 
