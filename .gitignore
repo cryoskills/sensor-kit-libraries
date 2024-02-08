@@ -50,3 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Add platform IO files to gitignore - ideally we want the library only
+platformio.ini
+.pio/
