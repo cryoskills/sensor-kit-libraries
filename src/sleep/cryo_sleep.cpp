@@ -1,7 +1,7 @@
 #include "cryo_sleep.h"
 #include "ZeroPowerManager.h"
 
-extern PseudoRTC cryo_rtc;
+PseudoRTC cryo_rtc;
 
 PseudoRTC::PseudoRTC() {
     // Initialise all alarms
@@ -194,6 +194,12 @@ void cryo_raise_alarms() {
     // check alarms
     cryo_rtc.raise_alarms();
     
+}
+
+void cryo_add_alarm_every(uint32_t seconds, void (*callback)()) {
+
+    cryo_rtc.add_alarm_every_n_seconds(seconds, callback);
+
 }
 
 void cryo_sleep() {
