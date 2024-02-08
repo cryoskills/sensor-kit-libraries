@@ -55,6 +55,7 @@ EXAMPLE USAGE:
     #include "cryo_sleep.h"
 
     void my_alarm_function();
+    PsuedoRTC* my_rtc;
 
     void setup() {
 
@@ -62,6 +63,8 @@ EXAMPLE USAGE:
 
         cryo_configure_clock();
         cryo_add_alarm_every(30, my_alarm_function);
+
+        my_rtc = cryo_get_rtc();
 
     }
 
@@ -71,15 +74,26 @@ EXAMPLE USAGE:
         cryo_sleep();
     }
 
+    void my_alarm_function() {
+        Serial.printf(
+            "Congrats, you're %d hours through the day!\n\r",
+            my_rtc->hour 
+        )
+    }
+
 ******************************************************************************/
 
-
 #include <Arduino.h>
+#include "ZeroPowerManager.h"
 
 #ifndef __CRYO_SLEEP_H
 #define __CRYO_SLEEP_H
 
 #define MAX_RTC_ALARMS 4
+
+// ** IMPORTANT ** 
+// Comment out this line to ENABLE true sleep mode!
+#define zpmSleep zpmPlayPossum
 
 // define PseudoRTC class so we can return it from cryo_ functions
 class PseudoRTC;
@@ -97,9 +111,9 @@ class PseudoRTC;
                     );
 
     arguments:      none
-    returns:        PseudoRTC object
+    returns:        pointer to PseudoRTC object
 */
-PseudoRTC cryo_get_rtc();
+PseudoRTC* cryo_get_rtc();
 
 /*
     name:           cryo_configure_clock()

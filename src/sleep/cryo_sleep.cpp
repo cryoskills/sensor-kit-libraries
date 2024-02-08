@@ -1,5 +1,4 @@
 #include "cryo_sleep.h"
-#include "ZeroPowerManager.h"
 
 PseudoRTC cryo_rtc;
 
@@ -217,4 +216,8 @@ void cryo_rtc_handler() {
     // Perform RTC tick
     cryo_rtc.tick();
 
+}
+
+PseudoRTC* cryo_get_rtc() {
+    return &cryo_rtc;
 }
