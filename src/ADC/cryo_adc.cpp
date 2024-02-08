@@ -25,23 +25,19 @@ ADCDifferential::~ADCDifferential() {
 void ADCDifferential::begin() {
   
   // Generic clock init
-  CRYODEBUG("Clock init");
   this->generic_clock_init();
   // ADC init
-  CRYODEBUG("Disable");
   this->disable();
-  CRYODEBUG("ADC init");
   this->adc_init();
 
-  CRYODEBUG("Input pins");
   this->set_input_pins(this->input_pos, this->input_neg);
-  CRYODEBUG("Gain");
+  
   this->set_gain(this->gain);
-  CRYODEBUG("Resolution");
+  
   this->set_resolution(this->resolution);
-  CRYODEBUG("Reference");
+  
   this->set_voltage_reference(this->reference);
-  CRYODEBUG("Averages");
+  
   this->set_averages(this->averages);
 
 }
