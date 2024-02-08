@@ -186,9 +186,14 @@ void cryo_configure_clock() {
 void cryo_wakeup() {
 
     zpmCPUClk48M();
+
+}
+
+void cryo_raise_alarms() {
+    
     // check alarms
     cryo_rtc.raise_alarms();
-
+    
 }
 
 void cryo_sleep() {

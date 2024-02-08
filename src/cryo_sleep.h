@@ -77,6 +77,7 @@ class PseudoRTC {
 void cryo_rtc_handler();
 void cryo_configure_clock();
 void cryo_wakeup();
+void cryo_raise_alarms();
 void cryo_sleep();
 
 #endif
