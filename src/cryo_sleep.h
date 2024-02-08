@@ -3,6 +3,8 @@
 #ifndef __CRYO_SLEEP_H
 #define __CRYO_SLEEP_H
 
+#define MAX_RTC_ALARMS 4
+
 class PseudoRTC {
 
     public: 
@@ -24,6 +26,10 @@ class PseudoRTC {
         uint32_t& minute = rtc_time.minute;
         uint32_t& second = rtc_time.second;
 
+        // Constructor
+        PseudoRTC();
+
+        // tick() function is called once a second
         void tick();
 
         PseudoRTC::time get_time();
@@ -32,7 +38,22 @@ class PseudoRTC {
 
         static bool is_leap_year(PseudoRTC::time time);
 
+        uint8_t add_alarm_every_n_seconds(uint32_t interval, void (*callback)());
+        void remove_alarm(uint8_t alarm_id);
+
+        void raise_alarms();
+
     private:
+    
+        // Alarms
+        // Functions:
+        void check_alarms();
+        // Variables:
+        uint32_t alarm_intervals[MAX_RTC_ALARMS];
+        uint32_t alarm_counts[MAX_RTC_ALARMS];
+        uint8_t alarm_flags[MAX_RTC_ALARMS];
+        void (*alarm_callback[MAX_RTC_ALARMS])();
+
         const uint8_t DAYS_OF_MONTH[12] = {
             31, // Jan
             28, // Feb

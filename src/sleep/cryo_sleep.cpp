@@ -3,6 +3,13 @@
 
 extern PseudoRTC cryo_rtc;
 
+PseudoRTC::PseudoRTC() {
+    // Initialise all alarms
+    for (uint8_t k = 0; k < MAX_RTC_ALARMS; k++) {
+        this->remove_alarm(k);
+    }
+}
+
 uint16_t PseudoRTC::month_from_str(const char* year_str) {
     for (int j = 0; j < 48; j += 4) {
         if (!strcmp(PseudoRTC::NAMES_OF_MONTH + j, year_str)) {
@@ -48,10 +55,12 @@ void PseudoRTC::tick() {
         this->month = 0;
     }
 
-    // Reset year at millenia indices - eek!
-    if (this->year > 999) {
+    if (this->year > 9999) {
         this->year = 0;
     };
+
+    // Update alarm values (but don't check them as we're still in the ISR)
+    this->check_alarms();
 
 }
 
@@ -93,6 +102,71 @@ bool PseudoRTC::is_leap_year(PseudoRTC::time time) {
 
 }
 
+void PseudoRTC::check_alarms() {
+
+    // this function should be called every tick()
+
+    // Update alarms
+    for (uint8_t k = 0; k < MAX_RTC_ALARMS; k++) {
+        //  check if alarm is null-ptr
+        if (this->alarm_callback[k] != NULL) {
+            // increment count
+            this->alarm_counts[k]++;
+            // check against interval
+            if (this->alarm_counts[k] >= this->alarm_intervals[k]) {
+                // set the alarm flag (don't clear this until we've called the alarm)
+                this->alarm_flags[k] = 1;
+                // and clear the count to start again
+                this->alarm_counts[k] = 0;
+            }
+        }
+    }
+}
+
+void PseudoRTC::raise_alarms() {
+
+    // Iterate over alarms
+    for (uint8_t k = 0; k < MAX_RTC_ALARMS; k++) {
+        if (this->alarm_callback[k] != NULL && this->alarm_flags[k]) {
+            // call the alarm
+            this->alarm_flags[k] = 0;
+            this->alarm_callback[k]();
+        }
+    }
+
+}
+
+uint8_t PseudoRTC::add_alarm_every_n_seconds(uint32_t interval, void (*callback)()) {
+
+    // Iterate through alarm looking for next NULL ptr
+    for (uint8_t k = 0; k < MAX_RTC_ALARMS; k++) {
+        if (this->alarm_callback[k] == NULL) {
+            this->alarm_callback[k] = callback;
+            this->alarm_intervals[k] = interval;
+            this->alarm_counts[k] = 0;
+            this->alarm_flags[k] = 0;
+            return k;
+        }
+    }
+    // return 0xff on no alarms set
+    return 0xff;
+
+}
+
+void PseudoRTC::remove_alarm(uint8_t alarm_id) {
+    
+    // don't do anything if the alarm_id is invalid 
+    if (alarm_id > MAX_RTC_ALARMS - 1)
+        return;
+
+    // otherwise, reset the callback function to NULL and clear all flags/counters
+    this->alarm_callback[alarm_id] = NULL;
+    this->alarm_flags[alarm_id] = 0;
+    this->alarm_intervals[alarm_id] = 0;
+    this->alarm_counts[alarm_id] = 0;
+
+}
+
 void cryo_configure_clock() {
     // 
     zpmRTCInit();
@@ -111,7 +185,9 @@ void cryo_configure_clock() {
 
 void cryo_wakeup() {
 
-  zpmCPUClk48M();
+    zpmCPUClk48M();
+    // check alarms
+    cryo_rtc.raise_alarms();
 
 }
 
