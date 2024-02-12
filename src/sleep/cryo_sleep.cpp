@@ -1,6 +1,8 @@
+#include <Arduino.h>
 #include "cryo_sleep.h"
 
 PseudoRTC cryo_rtc;
+volatile boolean cryo_asleep_flag_debug = true;
 
 PseudoRTC::PseudoRTC() {
     // Initialise all alarms
@@ -179,14 +181,19 @@ void cryo_configure_clock() {
     // };
     // cryo_rtc.set_time(init_time);
     cryo_rtc.set_time_from_compile_headers();
-    zpmRTCInterruptEvery(1024, cryo_rtc_handler);
+    zpmRTCInterruptEvery(1024 * CRYO_SLEEP_INTERVAL_SECONDS, cryo_rtc_handler);
 }
 
 void cryo_wakeup() {
 
-    zpmCPUClk48M();
+    #ifdef CRYO_SLEEP_MODE_DEBUG
+        cryo_wakeup_debug()
+    #else
+        zpmCPUClk48M();
+    #endif
 
 }
+void cryo_wakeup_debug() {}; // do nothing
 
 void cryo_raise_alarms() {
     
@@ -202,19 +209,27 @@ void cryo_add_alarm_every(uint32_t seconds, void (*callback)()) {
 }
 
 void cryo_sleep() {
-  
-    SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
-	
-    zpmSleep();
 
-    SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+    #ifdef CRYO_SLEEP_MODE_DEBUG
+        cryo_sleep_debug()
+    #else
+        cryo_asleep_flag_debug = true;
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
+        zpmSleep();
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+    #endif
 
 }
+void cryo_sleep_debug() {
+    cryo_asleep_flag_debug = true;
+    while (cryo_asleep_flag_debug) {}; 
+}; // do nothing
 
 void cryo_rtc_handler() {
     
     // Perform RTC tick
     cryo_rtc.tick();
+    cryo_asleep_flag_debug = false;
 
 }
 

@@ -83,17 +83,16 @@ EXAMPLE USAGE:
 
 ******************************************************************************/
 
-#include <Arduino.h>
 #include "ZeroPowerManager.h"
 
 #ifndef __CRYO_SLEEP_H
 #define __CRYO_SLEEP_H
 
 #define MAX_RTC_ALARMS 4
-
+#define CRYO_SLEEP_INTERVAL_SECONDS 1
 // ** IMPORTANT ** 
 // Comment out this line to ENABLE true sleep mode!
-#define zpmSleep zpmPlayPossum
+// #define zpmSleep zpmPlayPossum
 
 // define PseudoRTC class so we can return it from cryo_ functions
 class PseudoRTC;
@@ -133,6 +132,10 @@ void cryo_configure_clock();
     returns:        none
 */
 void cryo_wakeup();
+/*
+    debug version of the above function that doesn't perform any of the wakeup functions
+*/
+void cryo_wakeup_debug();
 
 /*
     name:           cryo_raise_alarms()
@@ -152,6 +155,10 @@ void cryo_raise_alarms();
     returns:        none
 */
 void cryo_sleep();
+/*
+    debug version of the above function that doesn't perform any of the sleep functions
+*/
+void cryo_sleep_debug();
 
 /*
     name:           cryo_add_alarm_every(uint32_t seconds, void (*callback)())
