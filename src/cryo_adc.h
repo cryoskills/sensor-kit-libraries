@@ -222,7 +222,7 @@ class ADCDifferential {
             ADCDifferential::INPUT_PIN_POS input_pos,
             ADCDifferential::INPUT_PIN_NEG input_neg,
             ADCDifferential::GAIN gain = ADCDifferential::GAIN::GAIN_1X,
-            ADCDifferential::AVERAGES averages = ADCDifferential::AVERAGES::NO_AVERAGING,
+            ADCDifferential::AVERAGES averages = ADCDifferential::AVERAGES::AVG_X1024,
             ADCDifferential::RESOLUTION resolution = ADCDifferential::RESOLUTION::RES_AVG,
             ADCDifferential::VOLTAGE_REFERENCE reference = ADCDifferential::VOLTAGE_REFERENCE::INT1V_INTERNAL
         );
