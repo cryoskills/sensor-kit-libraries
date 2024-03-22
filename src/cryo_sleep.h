@@ -90,6 +90,8 @@ EXAMPLE USAGE:
 
 #define MAX_RTC_ALARMS 4
 #define CRYO_SLEEP_INTERVAL_SECONDS 1
+#define CRYO_RTC_TIME_STRING_LENGTH 24
+
 // ** IMPORTANT ** 
 // Comment out this line to ENABLE true sleep mode!
 // #define zpmSleep zpmPlayPossum
@@ -122,7 +124,7 @@ PseudoRTC* cryo_get_rtc();
     arguments:      none
     returns:        none
 */
-void cryo_configure_clock();
+void cryo_configure_clock(const char* date, const char* time);
 
 /*
     name:           cryo_wakeup()
@@ -222,10 +224,12 @@ class PseudoRTC {
 
         // returns the current time held in the PseudoRTC
         PseudoRTC::time get_time();
+        // stores the current time in a char array
+        uint8_t get_timestamp(char* str);
         // sets the time held in the PseudoRTC
         void set_time(PseudoRTC::time time);
         // updates the time in the PseudoRTC from __DATE__ and __TIME__ compile strings
-        void set_time_from_compile_headers();
+        void set_time_from_compile_headers(const char* date, const char* time);
 
         // checks whether any alarm flags have been raised and, if so, calls them
         void raise_alarms();

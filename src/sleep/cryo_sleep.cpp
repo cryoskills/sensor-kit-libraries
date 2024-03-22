@@ -73,15 +73,15 @@ void PseudoRTC::set_time(PseudoRTC::time time) {
     this->rtc_time = time;
 }
 
-void PseudoRTC::set_time_from_compile_headers() {
+void PseudoRTC::set_time_from_compile_headers(const char* date, const char* time) {
 
     char month_buffer[4];
     PseudoRTC::time new_time;
     // Read date
-    sscanf(__DATE__, "%s %d %d", month_buffer, &new_time.day, &new_time.year);
+    sscanf(date, "%s %d %d", month_buffer, &new_time.day, &new_time.year);
     new_time.month = PseudoRTC::month_from_str(month_buffer);
     // Read time
-    sscanf(__TIME__, "%d:%d:%ud", &new_time.hour, &new_time.minute, &new_time.second);
+    sscanf(time, "%d:%d:%ud", &new_time.hour, &new_time.minute, &new_time.second);
 
     this->set_time(new_time);    
 
@@ -168,7 +168,25 @@ void PseudoRTC::remove_alarm(uint8_t alarm_id) {
 
 }
 
-void cryo_configure_clock() {
+
+uint8_t PseudoRTC::get_timestamp(char* str) {
+    sprintf(
+        str,
+        // results in a string that is 
+        // 3 + 3 + 5 + 3 + 3 + 2 + 3
+        // = 22 length, say 24 to be safe
+        "%02d %s %04d %02d:%02d:%02d", 
+        this->day,
+        &NAMES_OF_MONTH[4*(this->month)],
+        this->year,
+        this->hour,
+        this->minute,
+        this->second
+    );
+    return strlen(str);
+}
+
+void cryo_configure_clock(const char* date, const char* time) {
     // 
     zpmRTCInit();
     // PseudoRTC::time init_time = {
@@ -180,7 +198,7 @@ void cryo_configure_clock() {
     //     second : 10
     // };
     // cryo_rtc.set_time(init_time);
-    cryo_rtc.set_time_from_compile_headers();
+    cryo_rtc.set_time_from_compile_headers(date, time);
     zpmRTCInterruptEvery(1024 * CRYO_SLEEP_INTERVAL_SECONDS, cryo_rtc_handler);
 }
 
@@ -236,3 +254,4 @@ void cryo_rtc_handler() {
 PseudoRTC* cryo_get_rtc() {
     return &cryo_rtc;
 }
+
