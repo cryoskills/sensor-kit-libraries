@@ -90,7 +90,7 @@ EXAMPLE USAGE:
 
 #define MAX_RTC_ALARMS 4
 #define CRYO_SLEEP_INTERVAL_SECONDS 1
-#define CRYO_RTC_TIME_STRING_LENGTH 24
+#define CRYO_RTC_TIMESTAMP_LENGTH 24
 
 // ** IMPORTANT ** 
 // Comment out this line to ENABLE true sleep mode!
@@ -224,7 +224,27 @@ class PseudoRTC {
 
         // returns the current time held in the PseudoRTC
         PseudoRTC::time get_time();
-        // stores the current time in a char array
+        
+        /*
+            name:           get_timestamp(char* str)
+            description:    writes the current timestamp to the char array str 
+                            in 'DD MMM YYYY HH:mm:ss' format
+
+                            Example code
+
+                            char my_timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
+                            my_rtc->get_timestamp(my_timestamp);
+
+                            Serial.println(my_timestamp);
+
+                            // Outputs DD MMM YYYY HH:mm:ss datetime to Serial
+
+            arguments:      char* str:
+                                pointer to to where the timestamp should be written
+            returns:        uint8_t:
+                                length of the string that was written
+            
+        */
         uint8_t get_timestamp(char* str);
         // sets the time held in the PseudoRTC
         void set_time(PseudoRTC::time time);
