@@ -2,7 +2,7 @@
 #include "cryo_sleep.h"
 
 PseudoRTC cryo_rtc;
-volatile boolean cryo_asleep_flag_debug = true;
+volatile boolean cryo_asleep_flag_debug = false;
 
 PseudoRTC::PseudoRTC() {
     // Initialise all alarms
@@ -22,10 +22,10 @@ uint16_t PseudoRTC::month_from_str(const char* year_str) {
 
 void PseudoRTC::tick() {
 
-    this->second += 1;
+    this->second += CRYO_SLEEP_INTERVAL_SECONDS;
     // Increment minute
     if (this->second > 59) {
-        this->second = 0;
+        this->second = (this->second + CRYO_SLEEP_INTERVAL_SECONDS) % 60;
         this->minute += 1;
     }
     // Increment hour
@@ -207,7 +207,11 @@ void cryo_wakeup() {
     #ifdef CRYO_SLEEP_MODE_DEBUG
         cryo_wakeup_debug()
     #else
+
         zpmCPUClk48M();
+        // Removed 48M clock as this appeared to be causing the device to hang
+        // but stable now on transmitter
+
     #endif
 
 }
@@ -232,9 +236,17 @@ void cryo_sleep() {
         cryo_sleep_debug()
     #else
         cryo_asleep_flag_debug = true;
-        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
+        // Removed sleep/interrupt masks
+        
+        // SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
+        // zpmCPUClk32K();
         zpmSleep();
-        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        
+        // SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk;
+        // __DSB();
+        // __WFE();
+        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+    
     #endif
 
 }

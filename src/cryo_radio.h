@@ -27,6 +27,7 @@ FILE:
 
 DEPENDENCIES:
     RadioHead - http://www.airspayce.com/mikem/arduino/RadioHead/
+    cryo_sleep.h - for RTC
 
 DESCRIPTION: 
     Wraps RFM95 in RadioHead to provide an interface to the RFM96W radio module.
@@ -39,6 +40,7 @@ CONFIGURATION:
 EXAMPLE USAGE:
 */
 #include <Arduino.h>
+#include "cryo_sleep.h"
 
 #ifndef CRYO_RADIO
 #define CRYO_RADIO
@@ -49,7 +51,11 @@ EXAMPLE USAGE:
 
 #define CRYO_RADIO_ERROR_FAILED_INIT 0;
 
+// Define simplest radio packet
 typedef struct cryo_radio_packet {
+    uint8_t packet_type;
+    uint8_t packet_length;
+    int32_t packet_id;
     int32_t sensor_id;
     float_t ds18b20_temperature;
     float_t pt1000_temperature;
@@ -57,6 +63,7 @@ typedef struct cryo_radio_packet {
     float_t battery_voltage;
     float_t solar_panel_voltage;
     float_t load_voltage;
+    char timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
 };
 
 int32_t cryo_radio_init();
@@ -64,6 +71,7 @@ void cryo_radio_enable();
 void cryo_radio_disable();
 
 int32_t cryo_radio_send_packet(cryo_radio_packet* packet);
+int32_t cryo_radio_send_packet(cryo_radio_packet* packet, PseudoRTC* rtc);
 
 int32_t cryo_radio_receive_packet(cryo_radio_packet* packet);
 

@@ -7,13 +7,7 @@ RH_RF95 rf95(
 );
 
 int32_t cryo_radio_init() {
-
-    Serial1.println("Arduino LoRa TX Test!");
-    // manual reset
-    //  digitalWrite(RFM95_RST, LOW);
-    //  delay(10);
-    //  digitalWrite(RFM95_RST, HIGH);
-    delay(10);
+    
     while (!rf95.init()) {
         Serial1.println("LoRa radio init failed");
         return 0;
@@ -30,34 +24,6 @@ int32_t cryo_radio_init() {
     rf95.setTxPower(23, false);
 
     return 1;
-
-    // // Configure ENABLE pin
-    // pinMode(CRYO_RADIO_ENABLE_PIN, OUTPUT);
-
-
-    // // enable radio
-    // cryo_radio_enable();
-
-    // Serial1.println("Radio pin enabled");
-    // // initialise it
-    // if (!rf95.init())
-    //     return CRYO_RADIO_ERROR_FAILED_INIT;
-    
-    // if (!rf95.setFrequency(434.0)) {
-    //     Serial1.println("Set frequency failed.");
-    // }
-
-    // rf95.setTxPower(10, false);
-
-    // Serial1.print("Get device info: ");
-    // Serial1.println(rf95.getDeviceVersion());
-
-    // delay(100);
-
-    // // disable
-    // cryo_radio_disable();
-  
-    // return 1; // success!
 
 }
 
