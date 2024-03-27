@@ -23,11 +23,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 FILE: 
-    cryo_radio.h
+    cryo_power.h
 
 DEPENDENCIES:
-    RadioHead - http://www.airspayce.com/mikem/arduino/RadioHead/
-    cryo_sleep.h - for RTC
+    [INA3221](https://github.com/Tinyu-Zhao/INA3221/tree/main/src)
+        - requires modification of INA3221.cpp as below
+
+            LINE 418 in INA3221::getShuntVoltage() should read
+            
+        ```
+            res = (int32_t)(((int16_t)val_raw) / 8) * 40;
+        ```
 
 DESCRIPTION: 
     Wraps RFM95 in RadioHead to provide an interface to the RFM96W radio module.
@@ -39,47 +45,20 @@ CONFIGURATION:
 
 EXAMPLE USAGE:
 */
-#include <Arduino.h>
-#include "cryo_sleep.h"
+#include "INA3221.h"
 
-#ifndef CRYO_RADIO
-#define CRYO_RADIO
+#define CRYO_POWER_SHUNT_RESISTOR 100 // mOhms
+#define CRYO_POWER_FILTER_RESISTOR 10 // Ohms
 
-#define CRYO_RADIO_ENABLE_PIN 6
-#define CRYO_RADIO_IRQ_PIN 9
-#define CRYO_RADIO_CS_PIN 10
+#define CRYO_POWER_BATTERY_CHANNEL INA3221_CH1
+#define CRYO_POWER_PANEL_CHANNEL INA3221_CH2
+#define CRYO_POWER_LOAD_CHANNEL INA3221_CH3
 
-#define CRYO_RADIO_ERROR_FAILED_INIT 0;
+int32_t cryo_power_init();
 
-// Define simplest radio packet
-typedef struct cryo_radio_packet {
-    uint8_t packet_type;            // ignore - set to 0
-    uint8_t packet_length;          // set to 70 - standard packet length
-    uint32_t packet_id;              // 
-    uint32_t sensor_id;
-    float_t ds18b20_temperature;
-    float_t pt1000_temperature;
-    uint32_t raw_adc_value;
-    float_t battery_voltage;
-    float_t battery_current;
-    float_t solar_panel_voltage;
-    float_t solar_panel_current;
-    float_t load_voltage;
-    float_t load_current;
-    char timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
-} cryo_radio_packet;
-
-// Radio packet to use during sending
-cryo_radio_packet radio_packet; 
-PseudoRTC* radio_rtc;
-
-int32_t cryo_radio_init(uint32_t sensor_id);
-void cryo_radio_enable();
-void cryo_radio_disable();
-
-int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp);
-int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp, uint32_t raw_adc_value);
-
-int32_t cryo_radio_receive_packet(cryo_radio_packet* packet);
-
-#endif
+float_t cryo_power_battery_voltage();
+float_t cryo_power_battery_current();
+float_t cryo_power_solar_panel_voltage();
+float_t cryo_power_solar_panel_current();
+float_t cryo_power_load_voltage();
+float_t cryo_power_load_current();

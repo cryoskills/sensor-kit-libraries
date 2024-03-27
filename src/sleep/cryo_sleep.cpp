@@ -40,14 +40,14 @@ void PseudoRTC::tick() {
     }
 
     // Increment month
-    if (this->month == 1 && PseudoRTC::is_leap_year(this->rtc_time) && this->day > 28) {
+    if (this->month == 1 && PseudoRTC::is_leap_year(this->rtc_time) && this->day > 29) {
         this->month += 1;
-        this->day = 0;
+        this->day = 1;
     // not nice, but make implicit correction for -1 index here so that 
     // the days_of_month array is logical
-    } else if (this->day > PseudoRTC::DAYS_OF_MONTH[this->month] - 1) {
+    } else if (this->day > PseudoRTC::DAYS_OF_MONTH[this->month]) {
         this->month += 1;
-        this->day = 0;
+        this->day = 1;
     }
 
     // Increment year
@@ -208,7 +208,7 @@ void cryo_wakeup() {
         cryo_wakeup_debug()
     #else
 
-        zpmCPUClk48M();
+        // zpmCPUClk48M();
         // Removed 48M clock as this appeared to be causing the device to hang
         // but stable now on transmitter
 
