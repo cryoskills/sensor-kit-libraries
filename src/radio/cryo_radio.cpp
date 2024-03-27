@@ -8,6 +8,10 @@ RH_RF95 rf95(
     CRYO_RADIO_IRQ_PIN
 );
 
+// Radio packet to use during sending
+cryo_radio_packet radio_packet; 
+PseudoRTC* radio_rtc;
+
 int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
     
     // Attempt to start the RF95 radio module
@@ -69,7 +73,7 @@ int16_t packetnum = 0;
 int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp)
 {
     // Send packet with a fake raw value
-    cryo_radio_send_packet(ds18b20_temp, pt1000_temp, 0xffffffff);
+    return cryo_radio_send_packet(ds18b20_temp, pt1000_temp, 0xffffffff);
 }
 
 int32_t cryo_radio_send_packet(
