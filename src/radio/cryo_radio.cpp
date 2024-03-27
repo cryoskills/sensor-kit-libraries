@@ -82,12 +82,16 @@ int32_t cryo_radio_send_packet(
     uint32_t raw_adc_value
 ) {
 
+    Serial1.println("Assigning user values to packet");
+    Serial1.flush();
     // Copy data into the radio packet to send
     radio_packet.ds18b20_temperature = ds18b20_temp;
     radio_packet.pt1000_temperature = pt1000_temp;
     radio_packet.raw_adc_value = raw_adc_value;
 
     // Now assign housekeeping values
+    Serial1.println("Assigning housekeeping data to packet");
+    Serial1.flush();
     radio_packet.battery_voltage = cryo_power_battery_voltage();
     radio_packet.battery_current = cryo_power_battery_current();
     radio_packet.solar_panel_voltage = cryo_power_solar_panel_voltage();
@@ -95,16 +99,21 @@ int32_t cryo_radio_send_packet(
     radio_packet.load_voltage = cryo_power_load_voltage();
     radio_packet.load_current = cryo_power_load_current();
 
+    Serial1.println("Assigning timestamp to packet");
+    Serial1.flush();
     // copy timestamp
     radio_rtc->get_timestamp(radio_packet.timestamp);
 
+    Serial1.println("enabling radio module");
+    Serial1.flush();
     // Turn on radio modulke
     cryo_radio_enable();
 
     Serial1.print("cryo_radio_packet is bytes long: ");
     Serial1.println(sizeof(radio_packet));
+    Serial1.flush();
 
-    Serial1.println("Sending..."); delay(10) ;
+    Serial1.println("Sending packet..."); delay(10) ;
     rf95.send((uint8_t *) &radio_packet, sizeof(radio_packet));
     Serial1.println("Waiting for packet to complete..."); delay(10);
     rf95.waitPacketSent();
@@ -139,6 +148,7 @@ int32_t cryo_radio_receive_packet(cryo_radio_packet* packet) {
 
     if (rf95.available())
     {
+        Serial1.println("Message available");
         // Should be a message for us now
         // uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(*packet);
