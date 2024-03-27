@@ -25,7 +25,7 @@ int32_t cryo_power_init() {
         CRYO_POWER_FILTER_RESISTOR, 
         CRYO_POWER_FILTER_RESISTOR
     );
-
+    return 1;
 }
 
 float_t cryo_power_battery_voltage() {
