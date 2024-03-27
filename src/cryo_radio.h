@@ -73,7 +73,7 @@ typedef struct cryo_radio_packet {
 cryo_radio_packet radio_packet; 
 PseudoRTC* radio_rtc;
 
-int32_t cryo_radio_init(uint32_t sensor_id);
+int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc);
 void cryo_radio_enable();
 void cryo_radio_disable();
 
