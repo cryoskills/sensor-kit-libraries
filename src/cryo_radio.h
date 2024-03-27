@@ -39,11 +39,11 @@ CONFIGURATION:
 
 EXAMPLE USAGE:
 */
-#include <Arduino.h>
-#include "cryo_sleep.h"
-
 #ifndef CRYO_RADIO
 #define CRYO_RADIO
+
+#include <Arduino.h>
+#include "cryo_sleep.h"
 
 #define CRYO_RADIO_ENABLE_PIN 6
 #define CRYO_RADIO_IRQ_PIN 9
@@ -69,9 +69,6 @@ typedef struct cryo_radio_packet {
     char timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
 } cryo_radio_packet;
 
-// Radio packet to use during sending
-cryo_radio_packet radio_packet; 
-PseudoRTC* radio_rtc;
 
 int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc);
 void cryo_radio_enable();
