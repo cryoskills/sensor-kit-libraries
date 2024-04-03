@@ -49,7 +49,9 @@ EXAMPLE USAGE:
 #define CRYO_RADIO_IRQ_PIN 9
 #define CRYO_RADIO_CS_PIN 10
 
-#define CRYO_RADIO_ERROR_FAILED_INIT 0;
+#define CRYO_RADIO_ERROR_FAILED_INIT 0
+
+#define CRYO_RADIO_PACKET_TYPE 0xC5
 
 // Define simplest radio packet
 typedef struct cryo_radio_packet {
@@ -78,5 +80,6 @@ int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp);
 int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp, uint32_t raw_adc_value);
 
 int32_t cryo_radio_receive_packet(cryo_radio_packet* packet);
+int32_t cryo_radio_receive_packet(cryo_radio_packet* packet, int32_t* rssi);
 
 #endif

@@ -1,0 +1,9 @@
+[submodule "lib/RadioHead"]
+	path = lib/RadioHead
+	url = https://github.com/PaulStoffregen/RadioHead/
+[submodule "lib/ZeroPowerManager"]
+	path = lib/ZeroPowerManager
+	url = https://github.com/ee-quipment/ZeroPowerManager
+[submodule "lib/INA3221"]
+	path = lib/INA3221
+	url = https://github.com/cryoskills/INA3221

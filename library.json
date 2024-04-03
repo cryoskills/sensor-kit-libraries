@@ -1,0 +1,52 @@
+{
+    "name": "CryoSkills Sensor Kit Libraries",
+    "version": "1.0.0",
+    "description": "A set of wrapper libraries to interface functions of the CryoSkills Sensor Kit datalogger PCB.",
+    "keywords": ["glaciology", "arduino", "adalogger", "datalogger"],
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/cryoskills/sensor-kit-libraries.git"
+    },
+    "authors":
+    [
+      {
+        "name": "Lisa Craw",
+        "email": "crawl@cardiffac.uk",
+        "maintainer" : true
+      },
+      {
+        "name": "Jonathan Hawkins",
+        "email": "hawkinsj22@cardiff.ac.uk",
+        "maintainer": true
+      },
+      {
+        "name": "Mike Prior-Jones",
+        "email": "prior-jonesm@cardiff.ac.uk",
+        "maintainer": false
+      },
+      {
+        "name": "Emma Fisher",
+        "email": "emfish@bas.ac.uk",
+        "maintainer": false
+      }
+    ],
+    "license": "MIT",
+    "homepage": "https://www.cryoskills.com/",
+    "dependencies": [
+        {
+            "name":     "INA3221",
+            "version":  "https://github.com/cryoskills/INA3221"
+        },
+        {
+            "name":     "RadioHead",
+            "version":  "https://github.com/PaulStoffregen/RadioHead/"
+        },
+        {
+            "name":     "ZeroPowerManager",
+            "version":  "https://github.com/ee-quipment/ZeroPowerManager"
+        }
+    ],
+    "frameworks": "*",
+    "platforms": "*"
+  }

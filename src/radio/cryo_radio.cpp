@@ -31,11 +31,13 @@ int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
     // you can set transmitter powers from 5 to 23 dBm:
     rf95.setTxPower(23, false);
 
+    
+
     // Assign the radio_rtc pointer so we can access timestamps
     radio_rtc = rtc;
 
     // Initialise packet
-    radio_packet.packet_type = 0;
+    radio_packet.packet_type = CRYO_RADIO_PACKET_TYPE;
     radio_packet.packet_length = sizeof(cryo_radio_packet);
     radio_packet.packet_id = 0;
     // assign sensor ID from config
@@ -131,6 +133,13 @@ int32_t cryo_radio_send_packet(
 
 int32_t cryo_radio_receive_packet(cryo_radio_packet* packet) {
 
+    int32_t rssi = -999;
+    cryo_radio_receive_packet(packet, &rssi);
+
+}
+
+int32_t cryo_radio_receive_packet(cryo_radio_packet* packet, int32_t* rssi) {
+
     // if (rf95.available())
     // {   
     //     // Should be a message for us now   
@@ -148,21 +157,22 @@ int32_t cryo_radio_receive_packet(cryo_radio_packet* packet) {
 
     if (rf95.available())
     {
-        Serial1.println("Message available");
+        // Serial1.println("Message available");
         // Should be a message for us now
         // uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(*packet);
         if (rf95.recv((uint8_t*)packet, &len))
         {
             digitalWrite(LED_BUILTIN, HIGH);
-            Serial1.println("Received packet");
+            // Serial1.println("Received packet");
             // RH_RF95::printBuffer("Received: ", buf, len);
             // Serial1.print("Got: ");
             // Serial1.println((char*)buf);
             // Serial1.print("Packet millis(): ");
             // Serial1.println(packet->raw_adc_value);
-            Serial1.print("RSSI: ");
-            Serial1.println(rf95.lastRssi(), DEC);
+            // Serial1.print("RSSI: ");
+            // Serial1.println(rf95.lastRssi(), DEC);
+            *rssi = rf95.lastRssi();
             digitalWrite(LED_BUILTIN, LOW);
             return 1;
         }
