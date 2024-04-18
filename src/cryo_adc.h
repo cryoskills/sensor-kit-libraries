@@ -104,8 +104,8 @@ EXAMPLE USAGE:
 
 #include <Arduino.h>
 
-#ifndef __CRYO_ADC_H
-#define __CRYO_ADC_H
+#ifndef CRYO_ADC_H
+#define CRYO_ADC_H
 
 // Simple macros to make sure we're using the right numbers for GPIO group IDs
 #define GROUP_0 0

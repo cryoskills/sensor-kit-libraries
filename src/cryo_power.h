@@ -45,7 +45,11 @@ CONFIGURATION:
 
 EXAMPLE USAGE:
 */
+#include <Arduino.h>
 #include "INA3221.h"
+
+#ifndef CYRO_POWER_H
+#define CRYO_POWER_H
 
 #define CRYO_POWER_SHUNT_RESISTOR 100 // mOhms
 #define CRYO_POWER_FILTER_RESISTOR 10 // Ohms
@@ -62,3 +66,5 @@ float_t cryo_power_solar_panel_voltage();
 float_t cryo_power_solar_panel_current();
 float_t cryo_power_load_voltage();
 float_t cryo_power_load_current();
+
+#endif

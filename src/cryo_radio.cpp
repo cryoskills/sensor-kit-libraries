@@ -134,7 +134,7 @@ int32_t cryo_radio_send_packet(
 int32_t cryo_radio_receive_packet(cryo_radio_packet* packet) {
 
     int32_t rssi = -999;
-    cryo_radio_receive_packet(packet, &rssi);
+    return cryo_radio_receive_packet(packet, &rssi);
 
 }
 
@@ -181,8 +181,6 @@ int32_t cryo_radio_receive_packet(cryo_radio_packet* packet, int32_t* rssi) {
             Serial1.println("Receive failed");
         }
     }
-
-
 
     return 0;
 

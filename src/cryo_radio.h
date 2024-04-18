@@ -39,11 +39,12 @@ CONFIGURATION:
 
 EXAMPLE USAGE:
 */
-#ifndef CRYO_RADIO
-#define CRYO_RADIO
 
 #include <Arduino.h>
 #include "cryo_sleep.h"
+
+#ifndef CRYO_RADIO_H
+#define CRYO_RADIO_H
 
 #define CRYO_RADIO_ENABLE_PIN 6
 #define CRYO_RADIO_IRQ_PIN 9

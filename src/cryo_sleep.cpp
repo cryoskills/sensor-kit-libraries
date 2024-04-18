@@ -175,9 +175,11 @@ uint8_t PseudoRTC::get_timestamp(char* str) {
         // results in a string that is 
         // 3 + 3 + 5 + 3 + 3 + 2 + 3
         // = 22 length, say 24 to be safe
-        "%02d %s %04d %02d:%02d:%02d", 
+        "%02d-%02d-%04d %02d:%02d:%02d", 
         this->day,
-        &NAMES_OF_MONTH[4*(this->month)],
+        this->month+1,
+        // Move from name of month to numberic format
+        // &NAMES_OF_MONTH[4*(this->month)],
         this->year,
         this->hour,
         this->minute,
@@ -208,7 +210,7 @@ void cryo_wakeup() {
         cryo_wakeup_debug()
     #else
 
-        // zpmCPUClk48M();
+        zpmCPUClk48M();
         // Removed 48M clock as this appeared to be causing the device to hang
         // but stable now on transmitter
 
@@ -238,14 +240,13 @@ void cryo_sleep() {
         cryo_asleep_flag_debug = true;
         // Removed sleep/interrupt masks
         
-        // SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
-        // zpmCPUClk32K();
+        SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
+        zpmCPUClk32K();
         zpmSleep();
-        
         // SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk;
         // __DSB();
         // __WFE();
-        // SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
+        SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
     
     #endif
 

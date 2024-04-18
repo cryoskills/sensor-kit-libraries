@@ -83,10 +83,11 @@ EXAMPLE USAGE:
 
 ******************************************************************************/
 
+#include <Arduino.h>
 #include "ZeroPowerManager.h"
 
-#ifndef __CRYO_SLEEP_H
-#define __CRYO_SLEEP_H
+#ifndef CRYO_SLEEP_H
+#define CRYO_SLEEP_H
 
 #define MAX_RTC_ALARMS 4
 #define CRYO_SLEEP_INTERVAL_SECONDS 1

@@ -1,3 +1,4 @@
+#include "cryo_system.h"
 #include "cryo_adc.h"
 
 ADCDifferential::ADCDifferential(
@@ -26,20 +27,30 @@ void ADCDifferential::begin() {
   
   // Generic clock init
   this->generic_clock_init();
+  CRYO_DEBUG_MESSAGE("Clock init");
   // ADC init
   this->disable();
+  CRYO_DEBUG_MESSAGE("ADC disabled");
   this->adc_init();
-
-  this->set_input_pins(this->input_pos, this->input_neg);
+  CRYO_DEBUG_MESSAGE("ADC initialied");
   
-  this->set_gain(this->gain);
+  CRYO_DEBUG_MESSAGE("Setting input pins");
+  this->set_input_pins(this->input_pos, this->input_neg);  
+  CRYO_DEBUG_MESSAGE("Input pins done");
+  
+  this->set_gain(this->gain);  
+  CRYO_DEBUG_MESSAGE("Gain done");
   
   this->set_resolution(this->resolution);
+  CRYO_DEBUG_MESSAGE("Resolution done");
   
   this->set_voltage_reference(this->reference);
+  CRYO_DEBUG_MESSAGE("Voltage reference done");
+  
   
   this->set_averages(this->averages);
-
+  CRYO_DEBUG_MESSAGE("ADC configured");
+  
 }
 
 void ADCDifferential::generic_clock_init() {
@@ -105,18 +116,25 @@ void ADCDifferential::adc_init() {
 
 void ADCDifferential::set_input_pins(ADCDifferential::INPUT_PIN_POS input_pos, ADCDifferential::INPUT_PIN_NEG input_neg) {
 
+
+  CRYO_DEBUG_MESSAGE("Disabling ADC");
   bool enabled = this->is_enabled();
   if (enabled)
     this->disable();
 
-  // Assign port direction registers
+
+  CRYO_DEBUG_MESSAGE("Setting pin direction");
+    // Assign port direction registers
   this->input_pin_direction(input_pos);
   this->input_pin_direction(input_neg);
   
-  ADC->INPUTCTRL.reg = (ADC->INPUTCTRL.reg & ~(ADC_INPUTCTRL_MUXPOS_Msk | ADC_INPUTCTRL_MUXNEG_Msk)) 
+  CRYO_DEBUG_MESSAGE("Assigning register");
+    ADC->INPUTCTRL.reg = (ADC->INPUTCTRL.reg & ~(ADC_INPUTCTRL_MUXPOS_Msk | ADC_INPUTCTRL_MUXNEG_Msk)) 
     | (uint32_t)input_pos | (uint32_t)input_neg;
   this->wait_for_sync();
 
+  CRYO_DEBUG_MESSAGE("Waiting for sync");
+  
   if (enabled)
     this->enable();
 
@@ -124,49 +142,49 @@ void ADCDifferential::set_input_pins(ADCDifferential::INPUT_PIN_POS input_pos, A
 
 void ADCDifferential::input_pin_direction(ADCDifferential::INPUT_PIN_POS input_pos) {
 
-  switch (input_pos) {
-    case INPUT_PIN_POS::A0_PIN:
+  // JH: moved from switch statement to if/else - stopped bug where multiple pin directions were being set
+
+  if (input_pos == INPUT_PIN_POS::A0_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA02, 2, 1, PORT_PMUX_PMUXE_A);
-    case INPUT_PIN_POS::A1_PIN:
+  else if (input_pos == INPUT_PIN_POS::A1_PIN)
       this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 8, 4, PORT_PMUX_PMUXE_B);
-    case INPUT_PIN_POS::A2_PIN:
+  else if (input_pos == INPUT_PIN_POS::A2_PIN)
       this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 9, 4, PORT_PMUX_PMUXO_B);
-    case INPUT_PIN_POS::A3_PIN:
+  else if (input_pos == INPUT_PIN_POS::A3_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA04, 4, 2, PORT_PMUX_PMUXE_A);
-    case INPUT_PIN_POS::A4_PIN:
+  else if (input_pos == INPUT_PIN_POS::A4_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA05, 5, 2, PORT_PMUX_PMUXO_A);
-    case INPUT_PIN_POS::A5_PIN:
+  else if (input_pos == INPUT_PIN_POS::A5_PIN)
       this->input_pin_direction_register_set(GROUP_1, PORT_PB02, 2, 1, PORT_PMUX_PMUXE_B);
-    case INPUT_PIN_POS::D0_PIN:
+  else if (input_pos == INPUT_PIN_POS::D0_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA11, 11, 5, PORT_PMUX_PMUXO_A);
-    case INPUT_PIN_POS::D1_PIN:
+  else if (input_pos == INPUT_PIN_POS::D1_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA10, 10, 5, PORT_PMUX_PMUXE_A);
-    case INPUT_PIN_POS::D9_PIN:
+  else if (input_pos == INPUT_PIN_POS::D9_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA07, 7, 3, PORT_PMUX_PMUXO_A);
-    default:
-      return; // don't need to do anything
-  }
+  
+  return; // don't need to do anything
 
 }
 
 void ADCDifferential::input_pin_direction(ADCDifferential::INPUT_PIN_NEG input_neg) {
+  
+  // JH: moved from switch statement to if/else - stopped bug where multiple pin directions were being set
 
-  switch (input_pos) {
-    case INPUT_PIN_POS::A0_PIN:
+  if (input_neg == INPUT_PIN_NEG::A0_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA02, 2, 1, PORT_PMUX_PMUXE_A);
-    case INPUT_PIN_POS::A1_PIN:
+  else if (input_neg == INPUT_PIN_NEG::A1_PIN)
       this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 8, 4, PORT_PMUX_PMUXE_B);
-    case INPUT_PIN_POS::A2_PIN:
+  else if (input_neg == INPUT_PIN_NEG::A2_PIN)
       this->input_pin_direction_register_set(GROUP_1, PORT_PB08, 9, 4, PORT_PMUX_PMUXO_B);
-    case INPUT_PIN_POS::A3_PIN:
+  else if (input_neg == INPUT_PIN_NEG::A3_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA04, 4, 2, PORT_PMUX_PMUXE_A);
-    case INPUT_PIN_POS::A4_PIN:
+  else if (input_neg == INPUT_PIN_NEG::A4_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA05, 5, 2, PORT_PMUX_PMUXO_A);
-    case INPUT_PIN_POS::D9_PIN:
+  else if (input_neg == INPUT_PIN_NEG::D9_PIN)
       this->input_pin_direction_register_set(GROUP_0, PORT_PA07, 7, 3, PORT_PMUX_PMUXO_A);
-    default:
-      return; // don't need to do anything
-  }
+
+  return; // don't need to do anything
 
 }
 
@@ -177,9 +195,12 @@ void ADCDifferential::input_pin_direction_register_set(
   uint16_t pmux,
   uint8_t pmuxreg) {
 
+  CRYO_DEBUG_MESSAGE("Setting pin direction (register level)");
   PORT->Group[group].DIRCLR.reg = dirclr; // DIRCLR for input, DIRSET for output
   PORT->Group[group].PINCFG[pincfg].reg |= PORT_PINCFG_PMUXEN;
   PORT->Group[group].PMUX[pmux].reg = pmuxreg;
+  this->wait_for_sync();
+  CRYO_DEBUG_MESSAGE("Setting pin direction (finished waiting)");
 
 }
 
@@ -295,4 +316,29 @@ int16_t ADCDifferential::read() {
 
   return adc_conversion;
 
+}
+
+ADCDifferential::VOLTAGE_REFERENCE ADCDifferential::get_voltage_reference() {
+  return this->reference;
+}
+
+ADCDifferential::GAIN ADCDifferential::get_gain() {
+  return this->gain;
+}
+
+float_t ADCDifferential::get_gain_numeric() {
+  if (this->gain == ADCDifferential::GAIN::GAIN_1X) {
+    return 1.0;
+  } else if (this->gain == ADCDifferential::GAIN::GAIN_2X) {
+    return 2.0;
+  } else if (this->gain == ADCDifferential::GAIN::GAIN_4X) {
+    return 4.0;
+  } else if (this->gain == ADCDifferential::GAIN::GAIN_8X) {
+    return 8.0;
+  } else if (this->gain == ADCDifferential::GAIN::GAIN_16X) {
+    return 16.0;
+  } else if (this->gain == ADCDifferential::GAIN::GAIN_DIV2) {
+    return 0.5;
+  } 
+  return 0;
 }
