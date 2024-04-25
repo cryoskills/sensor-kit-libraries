@@ -29,6 +29,7 @@ SOFTWARE.
 #include "SD.h"
 
 #include "cryo_sleep.h"
+#include "cryo_system.h"
 
 PseudoRTC cryo_rtc;
 volatile boolean cryo_asleep_flag_debug = false;
@@ -54,7 +55,7 @@ void PseudoRTC::tick() {
     this->second += CRYO_SLEEP_INTERVAL_SECONDS;
     // Increment minute
     if (this->second > 59) {
-        this->second = (this->second + CRYO_SLEEP_INTERVAL_SECONDS) % 60;
+        this->second = (this->second) % 60;
         this->minute += 1;
     }
     // Increment hour
@@ -218,6 +219,25 @@ uint8_t PseudoRTC::get_timestamp(char* str) {
 }
 
 void cryo_configure_clock(const char* date, const char* time) {
+    
+    // CRYO_DEBUG_MESSAGE("Enable OSC32K and run in standby");
+    // // keep the XOSC32K running in standy
+    // SYSCTRL->OSC32K.reg |= SYSCTRL_OSC32K_ENABLE;
+    // SYSCTRL->OSC32K.reg |= SYSCTRL_OSC32K_RUNSTDBY;
+
+    // CRYO_DEBUG_MESSAGE("Attach GCLK_RTC to generic clock generator 1");
+    // // attach GCLK_RTC to generic clock generator 1
+    // GCLK->CLKCTRL.reg = (uint32_t)((GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK1 | (RTC_GCLK_ID << GCLK_CLKCTRL_ID_Pos)));
+
+    // CRYO_DEBUG_MESSAGE("Configuring OSC32K as GCLK 1 source");
+    // // 
+    // GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(1) |
+    //                    GCLK_SOURCE_OSC32K |
+    //                    GCLK_GENCTRL_IDC   |
+    //                    GCLK_GENCTRL_GENEN ;
+    // while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY);
+
+    // CRYO_DEBUG_MESSAGE("zpmRTCInit");
     // 
     zpmRTCInit();
     // PseudoRTC::time init_time = {
@@ -268,8 +288,8 @@ void cryo_sleep() {
         cryo_sleep_debug()
     #else
         cryo_asleep_flag_debug = true;
+
         // Removed sleep/interrupt masks
-        
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
         zpmCPUClk32K();
         zpmSleep();
