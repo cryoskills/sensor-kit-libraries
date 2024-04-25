@@ -27,9 +27,10 @@ int32_t cryo_power_init() {
     );
 
     // Set monitoring mode to trigger
-    ina3221.setModeTriggered();
+    // ina3221.setModeTriggered();
 
-    return 1;
+    // return true only if we can read from the IC correctly
+    return (ina3221.getManufID() == 0x5449);
 }
 
 float_t cryo_power_battery_voltage() {

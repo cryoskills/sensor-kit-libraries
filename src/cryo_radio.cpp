@@ -1,37 +1,36 @@
+#include "cryo_system.h"
 #include "cryo_power.h"
 #include "cryo_sleep.h"
 #include "cryo_radio.h"
 #include "RH_RF95.h"
 
 RH_RF95 rf95(
-    CRYO_RADIO_CS_PIN,
-    CRYO_RADIO_IRQ_PIN
+    CRYO_PIN_RADIO_CS,
+    CRYO_PIN_RADIO_IRQ
 );
 
 // Radio packet to use during sending
 cryo_radio_packet radio_packet; 
 PseudoRTC* radio_rtc;
 
-int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
+uint8_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
     
     // Attempt to start the RF95 radio module
     while (!rf95.init()) {
-        Serial1.println("LoRa radio init failed");
+        CRYO_DEBUG_MESSAGE("LoRa radio init failed");
         return 0;
     }
-    Serial1.println("LoRa radio init OK!");
+    CRYO_DEBUG_MESSAGE("LoRa radio init OK!");
     
     // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
     if (!rf95.setFrequency(434.0)) {
-        Serial1.println("setFrequency failed");
+        CRYO_DEBUG_MESSAGE("setFrequency failed");
         return 0;
     }
-    Serial1.print("Set Freq to: "); Serial1.println(434.0);
+    CRYO_DEBUG_MESSAGE("Set Freq to 434 MHz"); 
 
     // you can set transmitter powers from 5 to 23 dBm:
     rf95.setTxPower(23, false);
-
-    
 
     // Assign the radio_rtc pointer so we can access timestamps
     radio_rtc = rtc;
@@ -51,7 +50,6 @@ int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
     radio_packet.solar_panel_voltage = 0;
     radio_packet.load_voltage = 0;
     radio_packet.load_current = 0;
-    // we don't initialise the timestamp here
     rtc->get_timestamp(radio_packet.timestamp);
 
     return 1;
@@ -60,13 +58,13 @@ int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc) {
 
 void cryo_radio_enable() {
 
-    digitalWrite(CRYO_RADIO_ENABLE_PIN, HIGH);
+    digitalWrite(CRYO_PIN_RADIO_ENABLE, HIGH);
 
 }
 
 void cryo_radio_disable() {
 
-    digitalWrite(CRYO_RADIO_ENABLE_PIN, LOW);
+    digitalWrite(CRYO_PIN_RADIO_ENABLE, LOW);
 
 }
 
@@ -84,7 +82,7 @@ int32_t cryo_radio_send_packet(
     uint32_t raw_adc_value
 ) {
 
-    Serial1.println("Assigning user values to packet");
+    CRYO_DEBUG_MESSAGE("Assigning user values to packet");
     Serial1.flush();
     // Copy data into the radio packet to send
     radio_packet.ds18b20_temperature = ds18b20_temp;
@@ -92,7 +90,7 @@ int32_t cryo_radio_send_packet(
     radio_packet.raw_adc_value = raw_adc_value;
 
     // Now assign housekeeping values
-    Serial1.println("Assigning housekeeping data to packet");
+    CRYO_DEBUG_MESSAGE("Assigning housekeeping data to packet");
     Serial1.flush();
     radio_packet.battery_voltage = cryo_power_battery_voltage();
     radio_packet.battery_current = cryo_power_battery_current();
@@ -101,30 +99,30 @@ int32_t cryo_radio_send_packet(
     radio_packet.load_voltage = cryo_power_load_voltage();
     radio_packet.load_current = cryo_power_load_current();
 
-    Serial1.println("Assigning timestamp to packet");
+    CRYO_DEBUG_MESSAGE("Assigning timestamp to packet");
     Serial1.flush();
     // copy timestamp
     radio_rtc->get_timestamp(radio_packet.timestamp);
 
-    Serial1.println("enabling radio module");
+    CRYO_DEBUG_MESSAGE("enabling radio module");
     Serial1.flush();
     // Turn on radio modulke
     cryo_radio_enable();
 
-    Serial1.print("cryo_radio_packet is bytes long: ");
-    Serial1.println(sizeof(radio_packet));
+    // Serial1.print("cryo_radio_packet is bytes long: ");
+    // CRYO_DEBUG_MESSAGE(sizeof(radio_packet));
     Serial1.flush();
 
-    Serial1.println("Sending packet..."); delay(10) ;
+    CRYO_DEBUG_MESSAGE("Sending packet..."); delay(10) ;
     rf95.send((uint8_t *) &radio_packet, sizeof(radio_packet));
-    Serial1.println("Waiting for packet to complete..."); delay(10);
+    CRYO_DEBUG_MESSAGE("Waiting for packet to complete..."); delay(10);
     rf95.waitPacketSent();
 
     // Increment the sequence id
     radio_packet.packet_id++;
 
     cryo_radio_disable();
-    Serial1.println("Disabling radio");
+    CRYO_DEBUG_MESSAGE("Disabling radio");
     
     // // Do something with the packet
     return sizeof(radio_packet);
@@ -149,7 +147,7 @@ int32_t cryo_radio_receive_packet(cryo_radio_packet* packet, int32_t* rssi) {
     //         memcpy(packet, buf, len);
     //         return 1;
     //     } else {
-    //         Serial1.println("recv failed");
+    //         CRYO_DEBUG_MESSAGE("recv failed");
     //     }
 
     // }
@@ -157,28 +155,28 @@ int32_t cryo_radio_receive_packet(cryo_radio_packet* packet, int32_t* rssi) {
 
     if (rf95.available())
     {
-        // Serial1.println("Message available");
+        // CRYO_DEBUG_MESSAGE("Message available");
         // Should be a message for us now
         // uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(*packet);
         if (rf95.recv((uint8_t*)packet, &len))
         {
             digitalWrite(LED_BUILTIN, HIGH);
-            // Serial1.println("Received packet");
+            // CRYO_DEBUG_MESSAGE("Received packet");
             // RH_RF95::printBuffer("Received: ", buf, len);
             // Serial1.print("Got: ");
-            // Serial1.println((char*)buf);
+            // CRYO_DEBUG_MESSAGE((char*)buf);
             // Serial1.print("Packet millis(): ");
-            // Serial1.println(packet->raw_adc_value);
+            // CRYO_DEBUG_MESSAGE(packet->raw_adc_value);
             // Serial1.print("RSSI: ");
-            // Serial1.println(rf95.lastRssi(), DEC);
+            // CRYO_DEBUG_MESSAGE(rf95.lastRssi(), DEC);
             *rssi = rf95.lastRssi();
             digitalWrite(LED_BUILTIN, LOW);
             return 1;
         }
         else
         {
-            Serial1.println("Receive failed");
+            CRYO_DEBUG_MESSAGE("Receive failed");
         }
     }
 

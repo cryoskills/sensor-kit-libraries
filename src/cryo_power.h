@@ -26,19 +26,12 @@ FILE:
     cryo_power.h
 
 DEPENDENCIES:
-    [INA3221](https://github.com/Tinyu-Zhao/INA3221/tree/main/src)
-        - requires modification of INA3221.cpp as below
-
-            LINE 418 in INA3221::getShuntVoltage() should read
-            
-        ```
-            res = (int32_t)(((int16_t)val_raw) / 8) * 40;
-        ```
+    [INA3221](https://github.com/cryoskills/INA3221)
+    Modified to enable reading negative currents
 
 DESCRIPTION: 
-    Wraps RFM95 in RadioHead to provide an interface to the RFM96W radio module.
-
-    Provides send_packet, send_debug_packet and receive_packet methods.
+    Provides wrappers functions for initialising the INA3221 and reading power
+    and current measurements from the battery, solar panel and circuit.
 
 CONFIGURATION:
     
@@ -58,13 +51,64 @@ EXAMPLE USAGE:
 #define CRYO_POWER_PANEL_CHANNEL INA3221_CH2
 #define CRYO_POWER_LOAD_CHANNEL INA3221_CH3
 
+/*
+    name:           cryo_power_init()
+    description:    initialises the INA3221 power monitor circuitry and I2C interface.
+    arguments:      none
+    returns:        1 
+                        - if the I2C bus is initialised correctly and data can be read from the INA3221
+                    0   
+                        - if the initialising fails 
+
+*/
 int32_t cryo_power_init();
 
+/* 
+    name:           cryo_power_battery_voltage()
+    description:    returns the shunt voltage on the low side of the battery shunt resistor (R2)
+    arguments:      none
+    returns:        floating point (float_t) voltage in Volts 
+*/
 float_t cryo_power_battery_voltage();
-float_t cryo_power_battery_current();
+
+/* 
+    name:           cryo_power_solar_panel_voltage()
+    description:    returns the shunt voltage on the low side of the solar panel shunt resistor (R1)
+    arguments:      none
+    returns:        floating point (float_t) voltage in Volts 
+*/
 float_t cryo_power_solar_panel_voltage();
-float_t cryo_power_solar_panel_current();
+
+/* 
+    name:           cryo_power_load_voltage()
+    description:    returns the shunt voltage on the low side of the load shunt resistor (R3)
+    arguments:      none
+    returns:        floating point (float_t) voltage in Volts 
+*/
 float_t cryo_power_load_voltage();
+
+/* 
+    name:           cryo_power_battery_current()
+    description:    returns the shunt current on the battery shunt resistor (R2)
+    arguments:      none
+    returns:        floating point (float_t) current in Amperes 
+*/
+float_t cryo_power_battery_current();
+
+/* 
+    name:           cryo_power_solar_panel_current()
+    description:    returns the shunt current on the solar panel shunt resistor (R1)
+    arguments:      none
+    returns:        floating point (float_t) current in Amperes 
+*/
+float_t cryo_power_solar_panel_current();
+
+/* 
+    name:           cryo_power_load_current()
+    description:    returns the shunt current on the load shunt resistor (R3)
+    arguments:      none
+    returns:        floating point (float_t) current in Amperes 
+*/
 float_t cryo_power_load_current();
 
 #endif

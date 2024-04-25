@@ -190,6 +190,14 @@ void cryo_add_alarm_every(uint32_t seconds, void (*callback)());
 */
 void cryo_rtc_handler();
 
+/*
+    name:           cryo_rtc_sd_callbac(uint16_t* date, uint16_t* time)
+    description:    called by the SD card library to assign valid timestamps in file operations
+    arguments:      pointers to date/time objects
+    returns:        none
+*/
+void cryo_rtc_sd_callback(uint16_t* date, uint16_t* time);
+
 class PseudoRTC {
 
     public: 

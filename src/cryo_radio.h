@@ -46,19 +46,45 @@ EXAMPLE USAGE:
 #ifndef CRYO_RADIO_H
 #define CRYO_RADIO_H
 
-#define CRYO_RADIO_ENABLE_PIN 6
-#define CRYO_RADIO_IRQ_PIN 9
-#define CRYO_RADIO_CS_PIN 10
+/* 
+    Radio Pin Declarations
+    ----------------------
+    These can be defined prior to included cyro_radio.h to 
+    configure alternative radio pins for the RFM96 radio module.
+*/
+#ifndef CRYO_PIN_RADIO_ENABLE
+#define CRYO_PIN_RADIO_ENABLE 6
+#endif 
+//
+#ifndef CRYO_PIN_RADIO_IRQ
+#define CRYO_PIN_RADIO_IRQ 9
+#endif 
+//
+#ifndef CRYO_PIN_RADIO_CS
+#define CRYO_PIN_RADIO_CS 10
+#endif 
 
-#define CRYO_RADIO_ERROR_FAILED_INIT 0
+/* 
+    Radio Packet Type
+    -----------------
+    This serves as a placeholder in case there is a desire in later
+    versions to update the radio drivers so that multiple packet
+    types can be sent and - critically - identified at ther receiver
+    to be properly decoded.
 
+    For now, all packets should use the default CRYO_RADIO_PACKET_TYPE.
+*/
 #define CRYO_RADIO_PACKET_TYPE 0xC5
 
-// Define simplest radio packet
+/*
+    Radio Packet Structure
+    ----------------------
+    The radio packet structure is given by the C-type struct below.
+*/
 typedef struct cryo_radio_packet {
-    uint8_t packet_type;            // ignore - set to 0
-    uint8_t packet_length;          // set to 70 - standard packet length
-    uint32_t packet_id;              // 
+    uint8_t packet_type;            
+    uint8_t packet_length;         
+    uint32_t packet_id;
     uint32_t sensor_id;
     float_t ds18b20_temperature;
     float_t pt1000_temperature;
@@ -72,11 +98,65 @@ typedef struct cryo_radio_packet {
     char timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
 } cryo_radio_packet;
 
+/*
+    name:           cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc)
+    description:    Initialises the RFM96 radio module and packet structure 
+                    with default values.
+    arguments:
+                    uint32_t sensor_id
+                        - 32-bit integer to serve as a unique identifier
+                          for this instance of the datalogger
+                    PseudoRTC* rtc
+                        - pointer to an instance of PseudoRTC, used to 
+                          retrieve current timestamp when transmitting
+    returns:        
+                    uint8_t
+                        1 - returned if initialisation of radio was successful
+                        0 - returned if initialisation of radio was unsuccessful
+*/
+uint8_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc);
 
-int32_t cryo_radio_init(uint32_t sensor_id, PseudoRTC* rtc);
+/*
+    name:           cryo_radio_enable()
+    description:    pulls the pin defined by CRYO_PIN_RADIO_ENABLE high to switch
+                    on the RFM96 module.
+    arguments:      none
+    returns:        none
+*/
 void cryo_radio_enable();
+
+/*
+    name:           cryo_radio_disable()
+    description:    pulls the pin defined by CRYO_PIN_RADIO_ENABLE low to switch
+                    off the RFM96 module.
+    arguments:      none
+    returns:        none
+*/
 void cryo_radio_disable();
 
+/*
+    name:           cryo_radio_send_packet(...)
+    description:    sends a cryo_radio packet using the RFM96 radio module with
+                    the temperature data, optional ADC data and housekeeping
+                    information.
+    arguments:      
+                    float_t ds18b20_temp
+                    - temperature in degrees Celcius read by the DS18B20 
+                      digital temperature sensor
+
+                    float_t pt1000_temp
+                    - temperature in degrees Celcius as converted from the 
+                      PT1000 digital temperature sensor
+
+                    [optional]
+                    uint32_t raw_adc_value
+                    - a 32-bit field to store the raw ADC value.  In reality,
+                       the ADC conversion should return a signed/unsigned 16-bit field
+                       so appropriate knowledge on the receiver end is required 
+                       to correctly interpret the value.
+                       
+    returns:        returns the size of the transmitted packet
+*/
 int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp);
 int32_t cryo_radio_send_packet(float_t ds18b20_temp, float_t pt1000_temp, uint32_t raw_adc_value);
 

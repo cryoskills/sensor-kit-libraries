@@ -30,6 +30,7 @@
 #define CRYO_ERROR_DS18B20_INIT     0b01000000
 #define CRYO_ERROR_SD_INIT          0b00100000
 #define CRYO_ERROR_SD_FILENAME      0b00100001
+#define CRYO_ERROR_INA3221_INIT     0b00010000
 
 /* ---------------- TYPE DEFINTIONS ---------------- */
 typedef enum CRYO_DEBUG_LEVEL{

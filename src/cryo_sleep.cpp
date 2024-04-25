@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include "SPI.h"
+#include "SD.h"
+
 #include "cryo_sleep.h"
 
 PseudoRTC cryo_rtc;
@@ -60,7 +63,7 @@ void PseudoRTC::tick() {
         this->year = 0;
     };
 
-    // Update alarm values (but don't check them as we're still in the ISR)
+    // Update alarm values (but don't run them as we're still in the ISR)
     this->check_alarms();
 
 }
@@ -202,6 +205,7 @@ void cryo_configure_clock(const char* date, const char* time) {
     // cryo_rtc.set_time(init_time);
     cryo_rtc.set_time_from_compile_headers(date, time);
     zpmRTCInterruptEvery(1024 * CRYO_SLEEP_INTERVAL_SECONDS, cryo_rtc_handler);
+
 }
 
 void cryo_wakeup() {
@@ -263,6 +267,19 @@ void cryo_rtc_handler() {
     cryo_asleep_flag_debug = false;
 
 }
+
+void cryo_rtc_sd_callback(uint16_t* date, uint16_t* time) {
+    /* Reference (modified from)
+        https://forum.arduino.cc/t/file-creation-date-and-time-in-sd-card/336037/5
+    */
+
+    // return date using FAT_DATE macro to format fields
+    *date = FAT_DATE(cryo_rtc.year, cryo_rtc.month, cryo_rtc.day);
+
+    // return time using FAT_TIME macro to format fields
+    *time = FAT_TIME(cryo_rtc.hour, cryo_rtc.minute, cryo_rtc.second);
+}
+//--------------
 
 PseudoRTC* cryo_get_rtc() {
     return &cryo_rtc;
