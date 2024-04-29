@@ -320,7 +320,7 @@ void cryo_rtc_sd_callback(uint16_t* date, uint16_t* time) {
     */
 
     // return date using FAT_DATE macro to format fields
-    *date = FAT_DATE(cryo_rtc.year, cryo_rtc.month, cryo_rtc.day);
+    *date = FAT_DATE(cryo_rtc.year, cryo_rtc.month+1, cryo_rtc.day);
 
     // return time using FAT_TIME macro to format fields
     *time = FAT_TIME(cryo_rtc.hour, cryo_rtc.minute, cryo_rtc.second);
