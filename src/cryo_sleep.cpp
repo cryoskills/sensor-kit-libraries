@@ -31,6 +31,26 @@ SOFTWARE.
 #include "cryo_sleep.h"
 #include "cryo_system.h"
 
+// uint16_t[] PseudoRTC::NAMES_OF_MONTH;
+const uint8_t PseudoRTC::DAYS_OF_MONTH[12] = {
+    31, // Jan
+    28, // Feb
+    31, // Mar
+    30, // April
+    31, // May
+    30, // June
+    31, // July
+    31, // August
+    30, // Sept
+    31, // Oct
+    30, // Nov
+    31  // Dec
+};
+
+const uint16_t PseudoRTC::PREVIOUS_DAYS_BY_MONTH[12] = {
+    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+};
+
 PseudoRTC cryo_rtc;
 volatile boolean cryo_asleep_flag_debug = false;
 
@@ -105,15 +125,68 @@ void PseudoRTC::set_time(PseudoRTC::time time) {
 
 void PseudoRTC::set_time_from_compile_headers(const char* date, const char* time) {
 
-    char month_buffer[4];
     PseudoRTC::time new_time;
-    // Read date
-    sscanf(date, "%s %d %d", month_buffer, &new_time.day, &new_time.year);
-    new_time.month = PseudoRTC::month_from_str(month_buffer);
-    // Read time
-    sscanf(time, "%d:%d:%ud", &new_time.hour, &new_time.minute, &new_time.second);
-
+    //
+    get_time_from_compile_headers(date, time, &new_time);
     this->set_time(new_time);    
+
+}
+
+void PseudoRTC::get_time_from_compile_headers(const char* date, const char* time, PseudoRTC::time* time_object) {
+
+    char month_buffer[4];
+    // Read date
+    CRYO_DEBUG_MESSAGE("Converting date");
+    sscanf(date, "%s %d %d", month_buffer, (int*)&time_object->day, (int*)&time_object->year);
+    time_object->month = PseudoRTC::month_from_str(month_buffer);
+    // Read time
+    CRYO_DEBUG_MESSAGE("Converting time");
+    sscanf(time, "%d:%d:%d", (int*)&time_object->hour, (int*)&time_object->minute, (int*)&time_object->second);
+
+}
+
+
+uint64_t PseudoRTC::time_to_seconds(PseudoRTC::time time) {
+
+    uint64_t time_in_seconds;
+    uint8_t leap_days;
+
+    // Calculate leap days since origin (1st Jan 2000);
+    leap_days = time.year / 4 - time.year / 100; 
+
+    // Calculate time in seconds (Wihout leap years)
+    time_in_seconds = 60 * (
+        time.second + 
+        60 * (
+            time.minute +
+            24 * (
+                time.day + 
+                leap_days + 
+                PseudoRTC::PREVIOUS_DAYS_BY_MONTH[time.month] + 
+                365 * time.year 
+            )
+        )
+    );
+
+    return time_in_seconds;
+    
+}
+
+int8_t PseudoRTC::in_chronological_order(PseudoRTC::time time_a, PseudoRTC::time time_b) {
+
+    uint64_t time_a_seconds = PseudoRTC::time_to_seconds(time_a);
+    uint64_t time_b_seconds = PseudoRTC::time_to_seconds(time_b);
+
+    if (time_b_seconds > time_a_seconds) {
+        CRYO_DEBUG_MESSAGE("time b > time a");
+        return 1;
+    } else if (time_b_seconds < time_a_seconds) {
+        CRYO_DEBUG_MESSAGE("time a > time b");
+        return -1;
+    }
+    
+    CRYO_DEBUG_MESSAGE("time b = time a");
+    return 0;
 
 }
 
@@ -218,7 +291,31 @@ uint8_t PseudoRTC::get_timestamp(char* str) {
     return strlen(str);
 }
 
+uint8_t PseudoRTC::get_timestamp_compiler_format(char* str) {
+    
+    sprintf(
+        str,
+        // results in a string that is 
+        // 3 + 3 + 5 + 3 + 3 + 2 + 3
+        // = 22 length, say 24 to be safe
+        "%s %02d %04d %02d:%02d:%02d", 
+        &NAMES_OF_MONTH[4*(this->month)],
+        this->day,
+        this->year,
+        this->hour,
+        this->minute,
+        this->second
+    );
+    return strlen(str);
+}
+
 void cryo_configure_clock(const char* date, const char* time) {
+    
+    //  Init variable to store SD card time
+    PseudoRTC::time sd_time;
+    PseudoRTC::time compile_time;
+    // Assume a fail, only set to true once time succesfully set
+    bool sd_clock_fail = true;
     
     // CRYO_DEBUG_MESSAGE("Enable OSC32K and run in standby");
     // // keep the XOSC32K running in standy
@@ -240,17 +337,117 @@ void cryo_configure_clock(const char* date, const char* time) {
     // CRYO_DEBUG_MESSAGE("zpmRTCInit");
     // 
     zpmRTCInit();
-    // PseudoRTC::time init_time = {
-    //     year : 2024,
-    //     month : 2,
-    //     day : 6,
-    //     hour : 17,
-    //     minute : 13,
-    //     second : 10
-    // };
-    // cryo_rtc.set_time(init_time);
-    cryo_rtc.set_time_from_compile_headers(date, time);
+    
+    // Read SD clock time
+    CRYO_DEBUG_MESSAGE("Converting compiler headers to timestamp");
+    PseudoRTC::get_time_from_compile_headers(date, time, &compile_time);
+    
+    CRYO_DEBUG_MESSAGE("Beginning read from SD card");
+    if (cryo_rtc.read_from_sd(CLOCK_FILENAME, &sd_time)) {
+        
+        CRYO_DEBUG_MESSAGE("SD card read successful");
+        sd_clock_fail = false;
+
+    }
+
+    char local_buffer[9] = "HH:MM:SS";
+    sprintf(local_buffer, "%02d:%02d:%02d", compile_time.hour, compile_time.minute, compile_time.second);
+    CRYO_DEBUG_MESSAGE("Compiler");
+    CRYO_DEBUG_MESSAGE(local_buffer);
+    sprintf(local_buffer, "%02d:%02d:%02d", sd_time.hour, sd_time.minute, sd_time.second);
+    CRYO_DEBUG_MESSAGE("SD");
+    CRYO_DEBUG_MESSAGE(local_buffer);
+    
+    if (sd_clock_fail || PseudoRTC::in_chronological_order(sd_time, compile_time) > 0) {
+        CRYO_DEBUG_MESSAGE("----------------------------");
+        CRYO_DEBUG_MESSAGE("Using compiler provided time");
+        cryo_rtc.set_time(compile_time);
+        char loaded_timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
+        cryo_rtc.get_timestamp(loaded_timestamp);
+        CRYO_DEBUG_MESSAGE("Writing compile time to SD card");
+        cryo_rtc.write_to_sd(CLOCK_FILENAME);
+        CRYO_DEBUG_MESSAGE(loaded_timestamp)
+        CRYO_DEBUG_MESSAGE("----------------------------");
+    } else {
+        CRYO_DEBUG_MESSAGE("----------------------------");
+        CRYO_DEBUG_MESSAGE("Using SD provided time")
+        cryo_rtc.set_time(sd_time);
+        char loaded_timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
+        cryo_rtc.get_timestamp(loaded_timestamp);
+        CRYO_DEBUG_MESSAGE(loaded_timestamp)
+        CRYO_DEBUG_MESSAGE("----------------------------");
+    }
+
     zpmRTCInterruptEvery(1024 * CRYO_SLEEP_INTERVAL_SECONDS, cryo_rtc_handler);
+
+}
+
+uint8_t PseudoRTC::read_from_sd(const char* filename, PseudoRTC::time* sd_time) {
+    
+    File sd_clock_obj;
+    char sd_clock_date[11];
+    char sd_clock_time[8];
+
+    CRYO_DEBUG_MESSAGE("Initialising SD card");
+    if (!SD.begin(SD_CHIP_SELECT)) {
+        CRYO_DEBUG_MESSAGE("No SD card for RTC time");
+        return 0;
+    }
+    
+    CRYO_DEBUG_MESSAGE("Checking for RTC clock file");
+    if (!SD.exists(filename)) {
+        CRYO_DEBUG_MESSAGE("No clock file on SD card for RTC time");
+        return 0;
+    }
+
+
+    CRYO_DEBUG_MESSAGE("Reading date from SD card");
+    // Try reading from SD card
+    sd_clock_obj = SD.open(filename, FILE_READ);
+    if (sd_clock_obj.readBytes(sd_clock_date, 11) != 11) {
+        CRYO_DEBUG_MESSAGE("Failed to read clock date");
+        return 0;
+    }
+
+    CRYO_DEBUG_MESSAGE("Skipping space");
+    sd_clock_obj.read();
+    
+    CRYO_DEBUG_MESSAGE("Reading time from SD card");
+    if (sd_clock_obj.readBytes(sd_clock_time, 8) != 8) {
+        CRYO_DEBUG_MESSAGE("Failed to read clock time");
+        return 0;
+    }
+
+    CRYO_DEBUG_MESSAGE("Closing file on SD card");
+    sd_clock_obj.close();
+
+    CRYO_DEBUG_MESSAGE("Converting file date and time to timestamp");
+    PseudoRTC::get_time_from_compile_headers(sd_clock_date, sd_clock_time, sd_time);
+    return 1;
+
+}
+
+uint8_t PseudoRTC::write_to_sd(const char* filename) {
+
+    File sd_clock_obj;
+    char timestamp_buffer[20];
+
+    this->get_timestamp_compiler_format(timestamp_buffer);
+
+    if (!SD.begin(SD_CHIP_SELECT)) {
+        CRYO_DEBUG_MESSAGE("No SD card for writing RTC time");
+        return 0;
+    }
+
+    CRYO_DEBUG_MESSAGE("Writing timestamp");
+    // Try reading from SD card
+    sd_clock_obj = SD.open(filename, O_READ | O_WRITE | O_CREAT); // don't append
+    sd_clock_obj.seek(0);
+    sd_clock_obj.write(timestamp_buffer);
+    sd_clock_obj.close();
+    CRYO_DEBUG_MESSAGE("Finished timestamp");
+    
+    return 1;
 
 }
 
@@ -307,10 +504,12 @@ void cryo_sleep_debug() {
 }; // do nothing
 
 void cryo_rtc_handler() {
-    
+
     // Perform RTC tick
+    digitalWrite(LED_BUILTIN, HIGH);
     cryo_rtc.tick();
     cryo_asleep_flag_debug = false;
+    digitalWrite(LED_BUILTIN, LOW);
 
 }
 

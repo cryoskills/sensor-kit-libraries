@@ -93,6 +93,8 @@ EXAMPLE USAGE:
 #define CRYO_SLEEP_INTERVAL_SECONDS 1
 #define CRYO_RTC_TIMESTAMP_LENGTH 24
 
+#define CLOCK_FILENAME "CLOCK.TXT"
+
 // ** IMPORTANT ** 
 // Comment out this line to ENABLE true sleep mode!
 // #define zpmSleep zpmPlayPossum
@@ -255,10 +257,20 @@ class PseudoRTC {
             
         */
         uint8_t get_timestamp(char* str);
+        uint8_t get_timestamp_compiler_format(char* str);
         // sets the time held in the PseudoRTC
         void set_time(PseudoRTC::time time);
         // updates the time in the PseudoRTC from __DATE__ and __TIME__ compile strings
         void set_time_from_compile_headers(const char* date, const char* time);
+        // updates the time in the PseudoRTC from __DATE__ and __TIME__ compile strings
+        static void get_time_from_compile_headers(const char* date, const char* time, PseudoRTC::time* time_object); 
+
+        uint8_t read_from_sd(const char* filename, PseudoRTC::time* sd_time);
+        uint8_t write_to_sd(const char* filename);
+
+        // check if time_a is before time_b 
+        static int8_t in_chronological_order(PseudoRTC::time time_a, PseudoRTC::time time_b);
+        static uint64_t time_to_seconds(PseudoRTC::time time);
 
         // checks whether any alarm flags have been raised and, if so, calls them
         void raise_alarms();
@@ -274,23 +286,11 @@ class PseudoRTC {
         uint8_t alarm_flags[MAX_RTC_ALARMS];
         void (*alarm_callback[MAX_RTC_ALARMS])();
 
-        const uint8_t DAYS_OF_MONTH[12] = {
-            31, // Jan
-            28, // Feb
-            31, // Mar
-            30, // April
-            31, // May
-            30, // June
-            31, // July
-            31, // August
-            30, // Sept
-            31, // Oct
-            30, // Nov
-            31  // Dec
-        };
-        const char* NAMES_OF_MONTH = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec\0"; 
+        static const uint8_t DAYS_OF_MONTH[];
+        static constexpr char* NAMES_OF_MONTH = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec\0"; 
+        static const uint16_t PREVIOUS_DAYS_BY_MONTH[];
 
-        uint16_t month_from_str(const char* year_str);
+        static uint16_t month_from_str(const char* year_str);
         static bool is_leap_year(PseudoRTC::time time);
 
 };
