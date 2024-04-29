@@ -142,7 +142,11 @@ int32_t cryo_radio_send_packet(
     CRYO_DEBUG_MESSAGE("Sending packet..."); delay(10) ;
     rf95.send((uint8_t *) &radio_packet, sizeof(radio_packet));
     CRYO_DEBUG_MESSAGE("Waiting for packet to complete..."); delay(10);
-    rf95.waitPacketSent();
+    if (rf95.waitPacketSent(250)) {
+        CRYO_DEBUG_MESSAGE("Radio packet sent");
+    } else {
+        CRYO_DEBUG_MESSAGE("Failed to send radio packet.");
+    };
 
     // Increment the sequence id
     radio_packet.packet_id++;
