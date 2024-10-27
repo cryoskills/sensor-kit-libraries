@@ -119,13 +119,14 @@ PseudoRTC* cryo_get_rtc();
 
 /*
     name:           cryo_configure_clock()
-    description:    initialises the SAMD21 RTC, sets the PseudoRTC time to match the compile headers
-                    and configures the 1s interrupt to update the RTC
+    description:    initialises the SAMD21 RTC, sets the PseudoRTC time to 
+                    match the compile headers and configures the 1s interrupt 
+                    to update the RTC
                     Should be called in setup()
     arguments:      none
     returns:        none
 */
-void cryo_configure_clock(const char* date, const char* time);
+void cryo_configure_clock(const char* date, const char* time, uint32_t meas_interval);
 
 /*
     name:           cryo_wakeup()
@@ -149,6 +150,7 @@ void cryo_wakeup_debug();
     returns:        none
 */
 void cryo_raise_alarms();
+void cryo_reset_alarm();
 
 /*
     name:           cryo_sleep()

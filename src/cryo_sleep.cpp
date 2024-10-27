@@ -33,6 +33,7 @@ SOFTWARE.
 
 PseudoRTC cryo_rtc;
 volatile boolean cryo_asleep_flag_debug = false;
+uint32_t cryo_meas_interval = 10;
 
 PseudoRTC::PseudoRTC() {
     // Initialise all alarms
@@ -96,10 +97,35 @@ void PseudoRTC::tick() {
 }
 
 PseudoRTC::time PseudoRTC::get_time () {
+
+    REG_RTC_READREQ |= 1; // start read request
+    while (REG_RTC_STATUS & 0b10000000) {;} // wait for RTC to be ready
+
+    uint32_t myDT   = REG_RTC_MODE2_CLOCK;
+    this->year      = (myDT & RTC_MODE2_CLOCK_YEAR_Msk) >> RTC_MODE2_CLOCK_YEAR_Pos;
+    this->month     = (myDT & RTC_MODE2_CLOCK_MONTH_Msk) >> RTC_MODE2_CLOCK_MONTH_Pos;
+    this->day       = (myDT & RTC_MODE2_CLOCK_DAY_Msk) >> RTC_MODE2_CLOCK_DAY_Pos;
+    this->hour      = (myDT & RTC_MODE2_CLOCK_HOUR_Msk) >> RTC_MODE2_CLOCK_HOUR_Pos;
+    this->minute    = (myDT & RTC_MODE2_CLOCK_MINUTE_Msk) >> RTC_MODE2_CLOCK_MINUTE_Pos;
+    this->second    = (myDT & RTC_MODE2_CLOCK_SECOND_Msk) >> RTC_MODE2_CLOCK_SECOND_Pos;
+
     return this->rtc_time;
+    
 }
 
 void PseudoRTC::set_time(PseudoRTC::time time) {
+    
+    // Update RTC registers
+    REG_RTC_MODE2_CLOCK = 
+        RTC_MODE2_CLOCK_YEAR(time.year - 2000) // offset from ref 2000
+    | RTC_MODE2_CLOCK_MONTH(time.month)
+    | RTC_MODE2_CLOCK_DAY(time.day)
+    | RTC_MODE2_CLOCK_HOUR(time.hour)
+    | RTC_MODE2_CLOCK_MINUTE(time.minute)
+    | RTC_MODE2_CLOCK_SECOND(time.second);
+    
+    while (REG_RTC_STATUS & 0b10000000) {;}
+
     this->rtc_time = time;
 }
 
@@ -112,6 +138,10 @@ void PseudoRTC::set_time_from_compile_headers(const char* date, const char* time
     new_time.month = PseudoRTC::month_from_str(month_buffer);
     // Read time
     sscanf(time, "%d:%d:%ud", &new_time.hour, &new_time.minute, &new_time.second);
+
+    CRYO_DEBUG_MESSAGE("Setting compiler date/time as: ");
+    CRYO_DEBUG_MESSAGE(date);
+    CRYO_DEBUG_MESSAGE(time);
 
     this->set_time(new_time);    
 
@@ -200,6 +230,7 @@ void PseudoRTC::remove_alarm(uint8_t alarm_id) {
 
 
 uint8_t PseudoRTC::get_timestamp(char* str) {
+    this->get_time();
     sprintf(
         str,
         // results in a string that is 
@@ -218,39 +249,131 @@ uint8_t PseudoRTC::get_timestamp(char* str) {
     return strlen(str);
 }
 
-void cryo_configure_clock(const char* date, const char* time) {
+void __configure_rtc_gclk(void) {
     
-    // CRYO_DEBUG_MESSAGE("Enable OSC32K and run in standby");
-    // // keep the XOSC32K running in standy
-    // SYSCTRL->OSC32K.reg |= SYSCTRL_OSC32K_ENABLE;
-    // SYSCTRL->OSC32K.reg |= SYSCTRL_OSC32K_RUNSTDBY;
+    /* Modified from https://github.com/IowaDave/SAMD21-RTC-Clock/ */
+    // prescale GCLK4
+    REG_GCLK_GENDIV = 
+        GCLK_GENDIV_ID(0x04)
+    | GCLK_GENDIV_DIV(8);
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    // select external 32K crystal as source
+    REG_GCLK_GENCTRL =
+        GCLK_GENCTRL_ID(0x04)
+    | GCLK_GENCTRL_SRC_XOSC32K 
+    | GCLK_GENCTRL_DIVSEL
+    | GCLK_GENCTRL_RUNSTDBY;
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    GCLK->GENCTRL.bit.GENEN = 1; // enable the generator
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    // route output to the RTC peripheral
+    GCLK->CLKCTRL.reg = 
+        GCLK_CLKCTRL_ID_RTC
+    | GCLK_CLKCTRL_GEN_GCLK4; // component/gclk.h line 202
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    GCLK->CLKCTRL.bit.CLKEN = 1; // enable the GCLK
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
 
-    // CRYO_DEBUG_MESSAGE("Attach GCLK_RTC to generic clock generator 1");
-    // // attach GCLK_RTC to generic clock generator 1
-    // GCLK->CLKCTRL.reg = (uint32_t)((GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK1 | (RTC_GCLK_ID << GCLK_CLKCTRL_ID_Pos)));
+}
 
-    // CRYO_DEBUG_MESSAGE("Configuring OSC32K as GCLK 1 source");
-    // // 
-    // GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(1) |
-    //                    GCLK_SOURCE_OSC32K |
-    //                    GCLK_GENCTRL_IDC   |
-    //                    GCLK_GENCTRL_GENEN ;
-    // while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY);
+void __configure_evsys_gclk(void) {
 
-    // CRYO_DEBUG_MESSAGE("zpmRTCInit");
-    // 
-    zpmRTCInit();
-    // PseudoRTC::time init_time = {
-    //     year : 2024,
-    //     month : 2,
-    //     day : 6,
-    //     hour : 17,
-    //     minute : 13,
-    //     second : 10
-    // };
-    // cryo_rtc.set_time(init_time);
+    REG_GCLK_GENDIV = 
+    GCLK_GENDIV_ID(0x07)
+    | GCLK_GENDIV_DIV(0);
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    // select external 32K crystal as source
+    REG_GCLK_GENCTRL =
+        GCLK_GENCTRL_ID(0x07)
+    | GCLK_GENCTRL_SRC_XOSC32K
+    | GCLK_GENCTRL_DIVSEL
+    | GCLK_GENCTRL_RUNSTDBY;
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    GCLK->GENCTRL.bit.GENEN = 1; // enable the generator
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    GCLK->CLKCTRL.reg = 
+        GCLK_CLKCTRL_ID_EVSYS_0
+    | GCLK_CLKCTRL_GEN_GCLK7; // component/gclk.h line 202
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+    GCLK->CLKCTRL.bit.CLKEN = 1; // enable the GCLK
+    while (GCLK->STATUS.bit.SYNCBUSY) {;}
+
+}
+
+void cryo_configure_clock(const char* date, const char* time, uint32_t meas_interval) {
+    
+    CRYO_DEBUG_MESSAGE("Initialising RTC clocks");
+    
+    /* Modified from https://github.com/IowaDave/SAMD21-RTC-Clock/ */
+    
+    // Configure RTC GCLK
+    // ----------------------------------------------------------------
+    PM->APBCMASK.reg |= PM_APBCMASK_EVSYS;
+    __configure_rtc_gclk();
+
+    // apply power to the RTC
+    PM->APBASEL.bit.APBADIV = 0; // don't prescale the PM clock
+    PM->APBAMASK.bit.RTC_ = 1; // unmask the RTC
+
+    // Enable the external 32-bit oscillator in standby
+    SYSCTRL->XOSC32K.bit.RUNSTDBY = 1;
+    SYSCTRL->XOSC32K.bit.STARTUP = 6;
+
+    // Configure RTC
+    // ----------------------------------------------------------------
+    RTC->MODE2.CTRL.bit.ENABLE = 0;         // Enable the RTC
+    while (RTC->MODE2.STATUS.bit.SYNCBUSY); // Wait for synchronization
+
+    RTC->MODE2.CTRL.bit.SWRST = 1;          // Software reset the RTC
+    while (RTC->MODE2.STATUS.bit.SYNCBUSY); // Wait for 
+    
+    REG_RTC_MODE2_CTRL = 
+        RTC_MODE2_CTRL_MODE(RTC_MODE2_CTRL_MODE_CLOCK_Val)
+    | RTC_MODE2_CTRL_PRESCALER(RTC_MODE2_CTRL_PRESCALER_DIV64_Val);
+
+    RTC->MODE2.Mode2Alarm->MASK.bit.SEL = 0x03; // HHMMSS
+
+    while (REG_RTC_STATUS & 0b10000000) {;} 
+    
+    __configure_evsys_gclk();
+
+    // Configure Event System
+    // ----------------------------------------------------------------
+    EVSYS->USER.bit.CHANNEL = EVSYS_USER_CHANNEL_0;
+
+    EVSYS->CHANNEL.reg = EVSYS_CHANNEL_EDGSEL_RISING_EDGE |                  // Rising event edge detection
+                        //EVSYS_CHANNEL_PATH_SYNCHRONOUS |                 // Set event path as synchronous
+                        EVSYS_CHANNEL_PATH_RESYNCHRONIZED |                 // Set event path as resynchronized
+                        EVSYS_CHANNEL_EVGEN(EVSYS_ID_GEN_RTC_PER_5) |       // Set event generator (sender) as compare channel 0
+                        EVSYS_CHANNEL_CHANNEL(0);                           // Attach the generator (sender) to channel 0
+
+    // // enable event interrupts
+    NVIC_SetPriority(EVSYS_IRQn, 0);
+    NVIC_EnableIRQ(EVSYS_IRQn);
+    EVSYS->INTENSET.bit.EVD0 = 1;
+    
+    // // enable RTC interrupts
+    NVIC_SetPriority(RTC_IRQn, 0);
+    NVIC_EnableIRQ(RTC_IRQn);
+    RTC->MODE2.INTENSET.bit.ALARM0 = 1;
+
+    // Configure RTC alarms
+    // ----------------------------------------------------------------
+    
+    // Configure RTC prescaler interrupts
+    RTC->MODE2.EVCTRL.bit.PEREO5 = 1;
+    while (REG_RTC_STATUS & 0b10000000) {;}
+
+    REG_RTC_MODE2_CTRL |= (RTC_MODE2_CTRL_ENABLE); // enable RTC
+    while (REG_RTC_STATUS & 0b10000000) {;}
+
+    // Set measurement interval
+    cryo_meas_interval = meas_interval;
+    
+    // Configure deep sleep
+    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+    
     cryo_rtc.set_time_from_compile_headers(date, time);
-    zpmRTCInterruptEvery(1024 * CRYO_SLEEP_INTERVAL_SECONDS, cryo_rtc_handler);
 
 }
 
@@ -260,7 +383,7 @@ void cryo_wakeup() {
         cryo_wakeup_debug()
     #else
 
-        zpmCPUClk48M();
+        // zpmCPUClk48M();
         // Removed 48M clock as this appeared to be causing the device to hang
         // but stable now on transmitter
 
@@ -273,6 +396,40 @@ void cryo_raise_alarms() {
     
     // check alarms
     cryo_rtc.raise_alarms();
+    
+}
+
+void cryo_reset_alarm() {
+
+    PseudoRTC::time time = cryo_get_rtc()->get_time();
+
+    uint8_t seconds, minutes, hours = 0;
+    uint8_t d_seconds, d_minutes, d_hours = 0;
+
+    d_hours = (cryo_meas_interval / 60 / 60);
+    d_minutes = (cryo_meas_interval - d_hours * 60 * 60) / 60;
+    d_seconds = cryo_meas_interval - d_hours * 60 * 60 - d_minutes * 60;
+
+    seconds = time.second + d_seconds;
+    minutes = time.minute + d_minutes;
+    hours = time.hour + d_hours;
+
+    if (seconds >= 60) {
+        minutes += 1;
+        seconds = seconds - 60;
+    }
+
+    if (minutes >= 60) {
+        hours += 1;
+        minutes = minutes - 60;
+    }
+
+    hours = hours % 24;
+
+    RTC->MODE2.Mode2Alarm->ALARM.bit.HOUR = hours;
+    RTC->MODE2.Mode2Alarm->ALARM.bit.MINUTE = minutes;
+    RTC->MODE2.Mode2Alarm->ALARM.bit.SECOND = seconds;
+    while (REG_RTC_STATUS & 0b10000000) {;}
     
 }
 
@@ -291,11 +448,11 @@ void cryo_sleep() {
 
         // Removed sleep/interrupt masks
         SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk;	
-        zpmCPUClk32K();
-        zpmSleep();
+        // zpmCPUClk32K();
+        // zpmSleep();
         // SCB->SCR |= SCB_SCR_SLEEPONEXIT_Msk;
-        // __DSB();
-        // __WFE();
+        __DSB();
+        __WFI();
         SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
     
     #endif
@@ -305,14 +462,6 @@ void cryo_sleep_debug() {
     cryo_asleep_flag_debug = true;
     while (cryo_asleep_flag_debug) {}; 
 }; // do nothing
-
-void cryo_rtc_handler() {
-    
-    // Perform RTC tick
-    cryo_rtc.tick();
-    cryo_asleep_flag_debug = false;
-
-}
 
 void cryo_rtc_sd_callback(uint16_t* date, uint16_t* time) {
     /* Reference (modified from)

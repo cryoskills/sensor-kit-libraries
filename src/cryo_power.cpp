@@ -52,6 +52,8 @@ int32_t cryo_power_init() {
         CRYO_POWER_FILTER_RESISTOR
     );
 
+    ina3221.setModeTriggered();
+
     // Set monitoring mode to trigger
     // ina3221.setModeTriggered();
 
