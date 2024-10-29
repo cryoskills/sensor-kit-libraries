@@ -35,10 +35,11 @@ char rtc_timestamp[CRYO_RTC_TIMESTAMP_LENGTH];
 
 void cryo_error(uint8_t error_code) {
 
+    uint8_t flash_counts = 8;
     // Flash out the error code
     pinMode(LED_BUILTIN, OUTPUT);
     // Pseudo morse encoded - long dash is 1, short dash is 0
-    while (1) {
+    while (flash_counts-- > 0) {
         for (uint8_t k = 0; k < 8; k++) {
             digitalWrite(LED_BUILTIN, LOW);
             delay(50);
@@ -55,6 +56,11 @@ void cryo_error(uint8_t error_code) {
         }
         delay(ERROR_CODE_DELAY * 4);
     }
+    // Attempt SD write
+    PseudoRTC* local_rtc = cryo_get_rtc();
+    local_rtc->write_to_sd(CLOCK_FILENAME);
+    delay(500);
+    NVIC_SystemReset();
 
 }
 
