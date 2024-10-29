@@ -174,8 +174,17 @@ uint64_t PseudoRTC::time_to_seconds(PseudoRTC::time time) {
 
 int8_t PseudoRTC::in_chronological_order(PseudoRTC::time time_a, PseudoRTC::time time_b) {
 
+    char buffer[20];
+
     uint64_t time_a_seconds = PseudoRTC::time_to_seconds(time_a);
     uint64_t time_b_seconds = PseudoRTC::time_to_seconds(time_b);
+
+    CRYO_DEBUG_MESSAGE("Time A");
+    sprintf(buffer, "%u", (uint32_t)time_a_seconds);
+    CRYO_DEBUG_MESSAGE(buffer)
+    CRYO_DEBUG_MESSAGE("Time B");
+    sprintf(buffer, "%u", (uint32_t)time_b_seconds);
+    CRYO_DEBUG_MESSAGE(buffer)
 
     if (time_b_seconds > time_a_seconds) {
         CRYO_DEBUG_MESSAGE("time b > time a");
@@ -351,11 +360,11 @@ void cryo_configure_clock(const char* date, const char* time) {
     }
 
     char local_buffer[9] = "HH:MM:SS";
-    sprintf(local_buffer, "%02d:%02d:%02d", compile_time.hour, compile_time.minute, compile_time.second);
-    CRYO_DEBUG_MESSAGE("Compiler");
-    CRYO_DEBUG_MESSAGE(local_buffer);
     sprintf(local_buffer, "%02d:%02d:%02d", sd_time.hour, sd_time.minute, sd_time.second);
     CRYO_DEBUG_MESSAGE("SD");
+    CRYO_DEBUG_MESSAGE(local_buffer);
+    sprintf(local_buffer, "%02d:%02d:%02d", compile_time.hour, compile_time.minute, compile_time.second);
+    CRYO_DEBUG_MESSAGE("Compiler");
     CRYO_DEBUG_MESSAGE(local_buffer);
     
     if (sd_clock_fail || PseudoRTC::in_chronological_order(sd_time, compile_time) > 0) {
